@@ -74,13 +74,15 @@ enum
 
     STATUS_BEGIN_GLOBAL_ASGN = 100,
     STATUS_BEGIN_ENDC,
-    STATUS_END_OF_1CMD
+    STATUS_END_OF_1CMD,
+    STATUS_BEGIN_EXP_2CMD
   };
 
 int syntaxan (int token,symbol * sym)
 {
   static unsigned char val;
   static unsigned char channels[12]={0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  static symbol ptr;
 
   switch (status)
     {
@@ -167,7 +169,7 @@ int syntaxan (int token,symbol * sym)
           channels[val]=1;
           return 0;
 
-        case IDEN:           /* Variable which the name of the channel */
+        case IDEN:           /* Variable with the name of the channel */
           status = STATUS_END_OF_CHANNEL;
           if(!(*sym = searchsym(lexcad)))
             rerror(ESYNTAX, EIDEN_NAME, 0);
@@ -228,20 +230,20 @@ int syntaxan (int token,symbol * sym)
           *sym = syms1;
           return 0;
 
-        case OCT:
-        case VOL:
-        case BAT:
-        case INST:
-        case LOOP:
+        case OCT:               /* octave statement */
+        case VOL:               /* volume statement */
+        case BAT:               /* battery statement */
+        case INST:              /* instrument statement */
+        case LOOP:              /* loop statement */
         case AMPL:
-        case VIB:
-        case TIMES:
-        case TIMEL:
+        case VIB:               /* vibrato statement */
+        case TIMES:             /* time short format statement */
+        case TIMEL:             /* time long format statement */
         case DIVSUS:
-        case BATL:
-        case INSTL:
-        case FREC:
-          status = 7;
+        case BATL:              /* battery long format statement */
+        case INSTL:             /* instrument long format statement */
+        case FREC:              /* set frequency statement */
+          status = STATUS_BEGIN_EXP_2CMD;
           initexpr();
           initsym(syms1, token, token);
           *sym = syms1;
@@ -251,12 +253,10 @@ int syntaxan (int token,symbol * sym)
           status = 39;
           initexpr();
           initsym(syms1, token, token);
-
           initsym(syms2, NUMBER, 0);
           ssymsig(syms2, syms1);
           *sym = syms2;
           return 0;
-
 
         case REGFM:
           status = 8;
@@ -293,7 +293,7 @@ int syntaxan (int token,symbol * sym)
           rerror(ESYNTAX, E_BAD_COMM, 0);
         }
 
-    case 7:
+    case STATUS_BEGIN_EXP_2CMD:
       switch (token)
         {
         case NUMBER:
@@ -306,31 +306,24 @@ int syntaxan (int token,symbol * sym)
 
         case IDEN:
           status = 16;
+          if(!(ptr = searchsym(lexcad)))
+            rerror(ESYNTAX, EIDEN_NAME, 0);
 
-          {symbol ptr;
-
-            if(!(ptr = searchsym(lexcad)))
-              rerror(ESYNTAX, EIDEN_NAME, 0);
-
-            initsym(syms2, NUMBER, 0);
-
-            ssymsig(syms2,*sym);
-
-            *sym = syms2;
-
-            pushexp(NUMBER, gsymval(ptr));
-
-          } return 0;
+          initsym(syms2, NUMBER, 0);
+          ssymsig(syms2,*sym);
+          *sym = syms2;
+          pushexp(NUMBER, gsymval(ptr));
+          return 0;
 
         case PARI:
           status = 17;
-          {ssymsig(syms2,*sym);
-            *sym = syms2;
-            pushexp(token, 0);
-          };
+          ssymsig(syms2,*sym);
+          *sym = syms2;
+          pushexp(token, 0);
           return 0;
 
-        default: rerror(ESYNTAX, E_EXP, 0);
+        default:
+          rerror(ESYNTAX, E_EXP, 0);
 
         }
     case 8:
@@ -427,7 +420,7 @@ int syntaxan (int token,symbol * sym)
           }return 0;
 
         case DECO:
-          status = 7;
+          status = STATUS_BEGIN_EXP_2CMD;
           {initexpr();
             initsym(syms3, token, token);
             ssymsig(syms3,*sym);
@@ -435,7 +428,7 @@ int syntaxan (int token,symbol * sym)
           }return 0;
 
         case TAMP:
-          status = 7;
+          status = STATUS_BEGIN_EXP_2CMD;
           {initexpr();
             initsym(syms3, token, token);
             ssymsig(syms3,*sym);
@@ -463,7 +456,7 @@ int syntaxan (int token,symbol * sym)
       switch (token)
         {
         case EQ:
-          status = 7;
+          status = STATUS_BEGIN_EXP_2CMD;
           {initexpr();
           } return 0;
 
