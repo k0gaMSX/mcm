@@ -102,10 +102,12 @@ int syntaxan (int token,symbol * sym)
             rerror(ESYNTAX,E_INI,0);
           }
 
+        /* Variable declaration states  */
+
       case STATUS_BEGIN_VAR_DECL: /* VAR ; variable declaration */
         switch (token)
           {
-          case IDEN:
+          case IDEN:            /* Name of the variable */
             status = STATUS_NAME_VAR_DCL;
             *sym=newsymbol(lexcad);
             return 0;
@@ -129,12 +131,14 @@ int syntaxan (int token,symbol * sym)
 
           case IDEN:
             status = STATUS_NAME_VAR_DCL;
-            *sym=newsymbol(lexcad);
+            *sym = newsymbol(lexcad);
             return 0;
 
           default:
             rerror(ESYNTAX, E_VAR_DECL, 0);
           }
+
+        /* Channel declaration states */
 
       case STATUS_BEGIN_CHN_DECL:
         switch (token)
