@@ -72,7 +72,8 @@ enum
     STATUS_END_OF_CHANNEL,
     STATUS_BEGIN_CHN_BODY,
 
-    STATUS_BEGIN_GLOBAL_ASGN = 100 /* TODO: Update this */
+    STATUS_BEGIN_GLOBAL_ASGN = 100,
+    STATUS_BEGIN_ENDC
   };
 
 int syntaxan (int token,symbol * sym)
@@ -167,7 +168,6 @@ int syntaxan (int token,symbol * sym)
 
           case IDEN :           /* Variable which the name of the channel */
             status = STATUS_END_OF_CHANNEL;
-            {symbol ptr;
             if(!(*sym = searchsym(lexcad)))
               rerror(ESYNTAX, EIDEN_NAME, 0);
             else if((val = gsymval(*sym)) >=12)
@@ -177,24 +177,37 @@ int syntaxan (int token,symbol * sym)
               rerror(ESYNTAX, E_DECL_CH, 0);
 
             channels[val]=1;
-            }return 0;
+            return 0;
 
           default: rerror(ESYNTAX, E_CHANNEL, 0);
           }
 
-      case STATUS_END_OF_CHANNEL:
+        /* end of channel declaration */
+      case STATUS_END_OF_CHANNEL: /* CHANNEL IDEN | NUMBER ; end of channl dcl*/
         switch (token)
           {
-          case LN : status = STATUS_BEGIN_CHN_BODY; {inscode2(CHANNEL, gsymval(*sym));}return 1;
-          default: rerror(ESYNTAX, E_CHANNEL, 0);
-          }
+          case LN :             /* finish channel dcl */
+            status = STATUS_BEGIN_CHN_BODY;
+            inscode2(CHANNEL, gsymval(*sym));
+            return 1;
 
-      case 5:
-        recst = 5;
+          default:
+            rerror(ESYNTAX, E_CHANNEL, 0);
+          }
+        /* Begin channel body */
+      case STATUS_BEGIN_CHN_BODY:      /* CHANNEL IDEN | NUMBER LN ; chl body*/
+        recst = STATUS_BEGIN_CHN_BODY;   /*Save state for error handling*/
         switch (token)
           {
-          case LN: return 1;
-          case ENDC :  status = 12;{initsym(syms1, token, token);*sym = syms1;} return 0;
+          case LN:
+            return 1;
+
+          case ENDC :
+            status = STATUS_BEGIN_ENDC;
+            initsym(syms1, token, token);
+            *sym = syms1;
+            return 0;
+
           case PLAY :  status = 11;{initexpr();initsym(syms1, token, token);*sym = syms1;}return 0;
           case SIL :   status = 6; {initsym(syms1, token, token);*sym = syms1;}return 0;
           case DECOC : status = 6; {initsym(syms1, token, token);*sym = syms1;}return 0;
@@ -301,11 +314,17 @@ int syntaxan (int token,symbol * sym)
           default: rerror(ESYNTAX, E_EXP, 0);
           }
 
-      case 12:
+        /* Begin end of channel statement */
+      case STATUS_BEGIN_ENDC:   /* ENDC ; endc command */
         switch(token)
           {
-          case LN: status = 13;{inscode(gsymval(*sym));execute();} return 1;
-          default: rerror(ESYNTAX, E_BAD_COMM, 0);
+          case LN: status = 13;
+            inscode(gsymval(*sym));
+            execute();
+            return 1;
+
+          default:
+            rerror(ESYNTAX, E_BAD_COMM, 0);
           }
 
 
