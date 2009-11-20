@@ -209,149 +209,148 @@ int syntaxan (int token,symbol * sym)
           *sym = syms1;
           return 0;
 
-        case PLAY:  status = 11;
-          {initexpr();
-            initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+        case PLAY:  status = 11; /* play statement */
+          initexpr();
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case SIL:   status = 6;
-          {initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case DECOC: status = 6;
-          {initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case INCOC: status = 6;
-          {initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case OCT:   status = 7;
-          {initexpr();
-            initsym(syms1, token, token);
-            *sym = syms1;
-          };
+          initexpr();
+          initsym(syms1, token, token);
+          *sym = syms1;
+          ;
           return 0;
 
         case DECV:  status = 6;
-          {initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case INCV:  status = 6;
-          {initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case VOL:   status = 7;
-          {initexpr();
-            initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initexpr();
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case BAT:   status = 7;
-          {initexpr();
-            initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initexpr();
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case INST:  status = 7;
-          {initexpr();
-            initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initexpr();
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case LOOP:  status = 7;
-          {initexpr();
-            initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initexpr();
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case ENDL:  status = 6;
-          {initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case AMPL:  status = 7;
-          {initexpr();
-            initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initexpr();
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case VIB:   status = 7;
-          {initexpr();
-            initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initexpr();
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case TIMEP: status = 39;
+          initexpr();
+          initsym(syms1, token, token);
 
-          {initexpr();
-            initsym(syms1, token, token);
-
-            initsym(syms2, NUMBER, 0);
-            ssymsig(syms2, syms1);
-            *sym = syms2;
-          }  return 0;
+          initsym(syms2, NUMBER, 0);
+          ssymsig(syms2, syms1);
+          *sym = syms2;
+          return 0;
 
         case TIMES: status = 7;
-          {initexpr();
-            initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initexpr();
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case TIMEL:  status = 7;
-          {initexpr();
-            initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initexpr();
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case DIVSUS: status = 7;
-          {initexpr();
-            initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initexpr();
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case BATL:  status = 7;
-          {initexpr();
-            initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initexpr();
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case INSTL: status = 7;
-          {initexpr();
-            initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initexpr();
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case REGFM: status = 8;
-          {initexpr();
-            initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initexpr();
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case FREC:  status = 7;
-          {initexpr();
-            initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initexpr();
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case PAR:   status = 9;
-          {initsym(syms1, token, token);
-            *sym = syms1;
-          }return 0;
+          initsym(syms1, token, token);
+          *sym = syms1;
+          return 0;
 
         case IDEN: status = 10;
-          {(*sym = searchsym(lexcad))? 0:rerror(ESYNTAX, EIDEN_NAME, 0);
-          }return 0;
+          (*sym = searchsym(lexcad))? 0:rerror(ESYNTAX, EIDEN_NAME, 0);
+          return 0;
 
         default: rerror(ESYNTAX, E_UNK_COMM, 0);
-
         }
+
     case 6:
       switch (token)
         {
@@ -360,7 +359,6 @@ int syntaxan (int token,symbol * sym)
           }return 1;
 
         default: rerror(ESYNTAX, E_BAD_COMM, 0);
-
         }
     case 7:
       switch (token)
