@@ -1,0 +1,392 @@
+
+
+
+
+
+El macro ensamblador MCM es sensible a mayusculas. Un identidicador
+comienza con una letra y puede ir seguido de letras o digitos.El maximo tamaño
+de un identicador es de 13 digitos. Un numero es 
+una secuencia de digitos de tamaño maximo 3 digitos, ya que el maximo valor
+representado es el 255.
+Uso de : y de ?.
+
+
+
+
+FORMATO:
+
+El formato basico de un fichero de entrada es el siguiente:
+
+[[var name1 [,name2]*]|[name=expr]]*
+
+[channel NUMBER|name
+ [name=expr]
+ [command]
+ endc]+
+
+write
+
+
+
+
+SENTENCIAS DE DECLARACION DE VARIABLES:
+
+Mediante esta sentencia se definen nuevas variables para su uso posterior 
+en aquellos comandos que lo requiera. El formato basico empleado es el siguiente:
+
+var name
+
+Mediante lo cual se declarara la nueva variable name. Se pueden declarar varias
+variables en una sola sentencia usando para ello la coma:
+
+var name1,name2,name3
+
+
+EXPRESIONES
+
+En una expresion puede aparecer numeros, variables y signos aritmeticos. Para la 
+evaluacion de las mismas se usan las reglas de la aritmetica matematica definiendose
+la prioridad de los operadores tal como sigue:
+
+Alta prioridad    ( )
+		  * /
+Baja prioridad    - +
+
+Entre dos operandos de igual prioridad se evalua de izquierda a derecha. Para cambiar el 
+orden de evaluacion se pueden emplear los parentesis.
+
+
+SENTENCIAS DE ASIGNACION:
+
+Una sentencia de asignacion tiene la siguiente forma:
+
+label = expr
+
+si la variable con nombre label existe se le asignara el valor resultante de 
+evaluar la expresion.
+
+
+
+SENTENCIAS CHANNEL:
+
+Mediante esta sentencia se inicia la descripcion de un canal de musica. Para indicar el canal 
+se puede usar un numero o bien una variable. El compilador tiene definidas una serie de 
+variables para facilitar la comprension:
+
+
+psg1 -> 1
+psg2 -> 2
+psg3 -> 3
+fm1  -> 4
+fm2  -> 5
+fm3  -> 6
+fm4  -> 7
+fm5  -> 8
+fm6  -> 9
+fm7  -> 10
+fm8  -> 11
+fm9  -> 12
+
+
+Una vez que el compilador se encuentre con la primera sentencia channel ya no se admitiran 
+mas declaraciones de variables,aunque si se podran cambiar los valores de 
+aquellas variables definidas.
+
+
+Dentro de la definicion de un canal se pueden incluir los siguientes comandos:
+
+
+loop:
+
+Mediante este comando se define un bucle en la cancion. El final del bucle lo define
+el comando endl. Formato:
+
+loop expr
+
+donde expr debe generar un valor entre 0 y 9. Si se coloca el valor 0 se toma como un 
+bucle infinito. El driver de microcabbin necesita que se coloque una instruccion de loop
+antes de tocar la primera nota (dicha condicion no es considereda por el compilador, 
+asi que el musico es el encargado de asegurar dicha condicion).
+
+
+loopl:
+
+Igual que el anterior pero admite un valor entre 0 y 255 (ocupa dos bytes).
+
+
+endl:
+
+Sirve para definir el final de un bucle.
+
+
+
+play:
+
+Mediante este comando se tocara una  nota musical con con la fraccion de tiempo 
+octava y volumen previamente definido en el canal (vease mas adelante los comandos 
+oct,incoc,decoc,decv,incv,vol,time,times,timel). El formato del coamndo es el siguiente:
+
+play expr1[#|&][,expr2[#|&]]*
+
+Mediante la coma se pueden definir varias notas con los mismos parametros. Si despues de una nota
+se coloca el caracter # se aumentara la nota en medio tono, y de igual manera si se coloca el simbolo &
+se decrementara medio tono. Se pueden colocar tantos # y & como se desee, pero teniendo en cuenta 
+que siempre se estara dentro de la misma octava, por lo que se puede pasar del tono mas bajo al mas 
+alto si se coloca un & (o al reves si se coloca un #). El comando admite un valor entre 0 y 33 (sin tener 
+en cuenta los & y #) teniendo en cuenta que medio tono es correspondiente a un incremento o decrementoo de 3.
+Para facilitar la edicion el compilador incluye las giguientes variables internas:
+
+
+do,re,mi,fa,sol,la,si,c,d,e,f,g,h,a,b,C,D,E,F,G,A,B.
+
+
+rest
+		   
+Mantiene apagado el canal el tiempo determinado por el anterior comando de temporizacion (time,times,timel).
+
+
+
+- oct
+
+Coloca la octava del canal. Formato:
+
+oct expr
+
+donde el valor final de expr debe estar entre 0 y 7
+
+
+
+- decoc
+
+Decrementa el valor la ocyava actual
+	
+	   
+- incoc
+
+Incrementa el valor actual de la octava
+
+
+- vol
+
+Coloca el volumen del canal. Formato:
+
+vol expr
+
+donde el valor final de expr debe estar entre 0 y 15
+
+
+- decv
+
+Decrementa el volumen actual del canal.
+
+- incv
+
+
+Incrementa el  volumen actual del canal.
+
+
+- times
+
+Coloca el numero de interrupciones que va a durar la siguiente nota. El formato del 
+comando es el siguiente:
+
+
+times expr
+
+donde expr debe generar un valor entre 0 y 90.
+
+
+
+- timel
+
+
+Igual que el anterior pero admite un rango entre 0 y 255 (ocupa 2 bytes).
+
+
+
+- time
+
+Mediante este comando se coloca la duracion de la siguiente nota, pero indicandolo 
+en tiempo real en funcion de las variables definidas por el compilador tempo y Hz.
+La primera de ellas define el numero de negras por segundo (en basic L4) y Hz indica 
+la frecuencia de funcionamiento del MSX. Por defecto la variable tempo tiene el 
+valor 120 y la variable Hz 60, aunque ambos parametros pueden ser modificados mediante 
+una asignacion, incluso tomando valores diferentes para cada canal.
+
+
+
+El compilador tiene definidas las siguientes variables para usar con este comando:
+
+
+d1 = whole = redonda            (equivalente a L1 en BASIC)
+d2 = half  = blanca             (equivalente a L2 en BASIC)
+d4 = quarter = negra            (equivalente a L4 en BASIC)
+d8 = eigth = corchea            (equivalente a L8 en BASIC)
+d16 = sixteenth = semicorchea   (equivalente a L16 en BASIC)
+d32 = thirtysecond  = fusa      (equivalente a L32 en BASIC)
+d64 = sixtyfourth  = semifusa   (equivalente a L64 en BASIC)
+
+
+
+El formato del comando es el siguiente:
+
+time expr[.]*
+
+
+El caractar punto añade la mitad de la duracion del punto anterior anterior
+siendo el valor del primero la mitad de la duracion de la nota simple. Por 
+ejemplo si se añade a una duracion .. se le sumara a la duracion inicial 3/4
+de su valor. El compilador admite cualquier numero de puntos tras una nota, pero
+tras el sexto no añadiran tiempo alguna a la duracion.
+
+El compilador decide en funcion del resultado si debe emplear el comando del 
+driver times o timel por lo que el musico se tiene que despreocupar de
+los limites.
+
+
+El poder usar una expresion para definir la duracion del tiempo añade una 
+gran potencia al compilador, ya que permite usar facilmente los recursos 
+musicales empleados en las partituras. Ejemplos:
+
+
+Ligaduras:
+
+Mediante las ligaduras se suma la duracion de dos notas. Por ejemplo si se quiere conseguir la
+duracion de una negra mas una fusa seria tan facil como:
+
+time d4+d32 (o bien time negra+fusa)
+
+
+Grupos irregulares de notas:
+
+Mediante este recurso se quieren colocar un numero de notas en un tiempo determinado
+sin que haya una definicion exacta para ese tiempo. Un ejemplo de grupo irregular puede 
+ser un trisillo que seria un grupo irregular de 3 notas. Si se quiere que la duracion
+total del grupo sea equivalente al tiempo de una negra bastaria con escribir algo como:
+
+time d4/3 (o bien time negra/3)
+
+
+
+
+- drum 
+	
+
+- inst
+
+
+Mediante este comando se coloca el tipo de instrumento FM en el canal (si el canal 
+es un canal PSG se producira un error). El formato es el siguiente:
+
+
+inst expr
+
+
+donde expr debe generar un valor comprendido entre 0 y 31
+
+
+El compilador internamente define las siguientes variables:
+
+original
+violin
+guitar
+piano
+flute
+clarinet
+oboe
+trumpet
+organ
+horn
+synth
+harp
+vibra
+synthbass
+acustic
+electric
+
+
+
+
+(hay que definir mas)
+
+
+
+- instl
+
+Igual que el anterior pero ocupa dos bytes. Esta instruccion solo se ha 
+añadido por compatibilidad con el driver, pero no debe ser usada, ya que
+tiene el mismo efecto que inst pero ocupa 1 byte mas.
+
+
+- adsr
+
+
+
+
+
+- divsus
+
+
+
+- vib
+
+Creo que es solo para una nota.
+
+
+
+
+
+- frec
+
+
+		   
+- regfm
+
+Este comando se usa para escribir en un registro del OPLL
+
+
+
+- par
+
+Mediante este comando se modifican algunos parametros internos del driver. Admite 
+los siguientes subcomandos:
+
+   envloff
+   envlon    
+   suson
+   susoff
+   hfnum
+   lfnum
+   noise
+   tone
+   deco
+   tamp
+   ritmon
+   melon
+   modefm
+   var
+
+		   
+
+
+- endc
+
+Mediante este comando de deja bloqueado el canal, de tal menera que no continua
+decodificando el resto de comandos del canal. Una vez que el compilador se encuentre 
+con este comando considerara que el canal ha concluido. Es necesario colocar el 
+comando endc para terminar el canal.
+
+
+ 
+
+SENTENCIA write
+
+Mediante la sentencia write se genera el fichero de datos listo para ser reproducido
+mediante el driver de microcabbin. odas las instrucciones posteriores en el fichero 
+seran ignoradas.
+
+
+
+
+
+

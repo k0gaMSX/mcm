@@ -1,0 +1,6455 @@
+;|-------------------------------+
+;|         MCDRV   .DRV          |
+;|  Dizassembled by ZD ver 3.47  |
+;+-------------------------------+
+
+
+
+
+Correccion de ideas-> ADSR: se puede usar en cualquier canal
+		      divsus: marca el tiempo del timbre del sonido (es decir durante cuanto
+			      tiempo se oye el instrumento, que no tiene porque ser igual a 
+			      la duracion de la nota
+
+		      Para usar el FM en modo ritmico es necesario usar primero el comando
+		      par que activa el modo ritmico, y luego los comandos par adecuados 
+		      para activar los instrumentos ritmicos. Para tocar un canal ritmico
+		      ...
+		      
+
+		     		       
+		      Los canales 7 y 8 se pueden configurar en modo ritmico de dos maneras independientes 
+		      diferentes:
+
+
+		      Modo| SD-HH  | TOM-TCY |
+		      -----------------------
+		          | C7<-SD | C7<-TOM |
+			  | C8<-HH | C8<-TCY |
+		      -----------------------
+
+
+		      
+		     	 
+;810f -> Valor del puerto E6 -> Timer de alta velocidad
+
+
+;Formato:
+;En primer lugar hay una cabecera de 2 bytes:
+;       - Tipo de cancion:
+;           FE -> Estas canciones tienen una cabecera de tipo bload, asi
+;                 que a continuacion vienen 7 bytes para indicar direccion
+;                 de inicio y demas. Despues de esa cabecera viene un
+;                 fichero tipo C.
+;                 
+;           C  -> Cabecera simple.
+;       - 1 byte en blanco.
+
+
+
+;Luego vienen 2 bytes de cabecera de cada canal:
+;           - 2 bytes que indican el offset de la cabecera del proximo canal
+;             desde el inicio de la cancion si es 0 indica el final de la
+;             lista de canales.
+; Despues de la direccion del siguiente canal vienen los datos propiamente dichos
+
+
+
+ 
+;Lista de funciones de los comandos: (funciones que son llamadas una vez descodificado el canal)
+
+
+********************************************************************************************************************************
+********************************************************************************************************************************
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+             Intervalo: 0 Finaliza decodificacion del canal
+-----------------------------------------------------------------------------------------------------------------------------
+;840c  24    Intervalo: 1-24  /Tiene que ver con frecuencias y multiplicadores de frecuencias. Escribe las frecuencias
+;			       en el chip y el sonido.
+;     Pasa +4 a c y escribe el parametro en +4 y en a, carga en hl 8a3c+a*4. carga en de (hl+2) y multiplica de * +7
+;     y escribe el resultado en +5 (2 bytes) (Podria ser +/ una manera de controlar la octava?) 
+-----------------------------------------------------------------------------------------------------------------------------
+;8468  01    Intervalo: 25  /Desactivar canal
+;     Pone +C a 0 llama a la funcion de configurar canal. Lee el 
+;     valor de +3 y lo pone como cuenta actual. Le suma a +B 40
+;     retorna si paridad, y almacena en +B el valor actual & 7F.
+;     Ademas finaliza la ejecucion del canal.
+-----------------------------------------------------------------------------------------------------------------------------
+;8482  02    Intervalo: 26-27 /Incrementar o decrementar la octava
+;     Si el parametro es 0 decrementa la octava, y si es 1 la incrementa
+-----------------------------------------------------------------------------------------------------------------------------
+;848b  08    Intervalo: 28-2f       /Carga la octva
+;     Carga el parametro en +7
+----------------------------------------------------------------------------------------------------------------------------
+;848f  02    Intervalo: 30-31	  /Incrementar o decrementar volumen
+;     Si el parametro es 0 decrementa, si es 1 incrementa.
+-----------------------------------------------------------------------------------------------------------------------------
+;8498  10    Intervalo: 32-41		/Inicializa decay  y escribe el volumen (parametro)
+;     Carga en +8 el parametro y pone +E y +D a 0
+;     en funcion del bit 7 +C (psg o fm) le resta a 15 el resultado o no y lo escribe en +9.
+-----------------------------------------------------------------------------------------------------------------------------
+;84b4  20    Intervalo: 42-61  /Tocar un canal tomando como parametro el resto (frecuencia) 
+;                               (creo que este comando es solo para baterias)
+;     Igual que fc pero no toma el valor de a del siguiente byte de los comandos
+;     sino del propio comando (paremtro del resto)
+-----------------------------------------------------------------------------------------------------------------------------
+;84f1  10    Intervalo: 62-71   /Comando de inicio de macro comando, parametro es el indice de rep.
+;     Desplaza 3 bytes hacia arriba los valores de 1e-2a. Luego almacena el valor del parametro en +1f y copia a +20 la 
+;     direccion de ejecucion del siguiente comando. El desplazar esos bytes es una cuestion de mantener
+;     la pila de direcciones para los bucles anidados. MAXIMO NUMERO DE BUCLES ANIDADOS = 6
+------------------------------------------------------------------------------------------------------------------------------
+;850f  01    Intervalo: 72
+;     Fin de macrocomando. Si el numero de repeticiones no es 0 retorna a la direccion guardada en +20. En caso 
+;     contrario continua la ejecucion y desapila el bucle.
+------------------------------------------------------------------------------------------------------------------------------
+;853a  10    Intervalo: 73-82  /Poner Instrumento (parametro instrumento) /creo que solo para baterias)
+;     Multiplica el parametro por 3, y le suma el contenido de 8acc (2 bytes) (9000),
+;     resultado en hl, Carga en +D y en +E (hl), +F <- (hl+1),+10 <- (hl+2),
+;     Carga el valor de +9 en +11     
+------------------------------------------------------------------------------------------------------------------------------
+;855b  10    Intervalo: 83-92 Carga valores en +12,+13,+14,+15
+;8576  04    Intervalo: 93-96 Hace algo sin sentidoø?. Al fin y al cabo es como el codigo fa
+------------------------------------------------------------------------------------------------------------------------------
+;8581  5b    Intervalo: 97-f1  /Pone duracion de la siguiente nota (+3)
+;     carga el parametro en +3, lo divide entre 8
+;     y lo multiplica por el valor de +B & 7 y luego lo
+;     almacena en +A
+------------------------------------------------------------------------------------------------------------------------------
+;8586  08    Intervalo: f2-f9 
+;     Limpia el nibble inferior de +B y mete en ese nibble el valor del parametro. A continuacion carga en hl 
+;     (+3*256)/8 y lo multiplica por +b & 7 y carga el byte superior en +A
+-----------------------------------------------------------------------------------------------------------------------------
+;857e  01    Intervalo: fa /poner duracion. Recoge el parametro del siguiente comando
+-----------------------------------------------------------------------------------------------------------------------------
+;84ee  01    Intervalo: fb /Comando de inicio de macrocomando. Igual que 62-71 pero recogiendo el valor de la lista de 
+;	     comandos
+-----------------------------------------------------------------------------------------------------------------------------
+;84b1  01    Intervalo: fc  /Toca un canal (Si es PSG toca una bateria)
+;      Toma en a el siguiente comando del canal (incrementando el puntero de
+;      comando actual). Si el b7 de +C no es 0 carga en +6 80 y en +5 a y salta a 
+;      8442 (psg) sino salta a 84c4 (fm)
+;--->PSG: Carga el parametro como frecuencia del canal de ruido. Y activa el volumen del canal actual (teniendo en cuanta
+;         los parametros de muscia off e incidental y demas). Activa todos los canales de PSG. (termina activando el ruido en el 
+;	  canal).
+;--->FM: Si es menor que 10 carga el parametro en +16 y retorna. Si es mayor direcciona segun el parametro una tabla
+;       y escribe los 8 primeros registros (registros de modos generales).
+--------------------------------------------------------------------------------------------------------------------------------- 
+;85ad  01    Intervalo: fd 
+;     Toma en b el siguiente comando y en a el siguiente siguiente y despues salta a 80d8. Es decir escribe en un registro del 
+;     del fm.
+---------------------------------------------------------------------------------------------------------------------------------
+;85b7  01    Intervalo: fe /Toca un canal (si es PSG toca un instrumento) (puede que los instrumentos se definan mediante
+;	                    una serie de pasos ciclicos (en PSG).
+;     Recoge el parametro del siguiente comando, lo carga en a, y carga en hl 9060+a*4. +17 <- (hl), +18 <- (hl+1)
+;     +1a <- (hl+2), +1b <- hl+3 .
+;     carga en hl ((+17 & 3) * 3) + 8893 y despues salta a (hl).    
+---------------------------------------------------------------------------------------------------------------------------------
+;85d6  01    Intervalo: ff
+;      Recoge el parametro del siguiente comando, lo carga en a, y carga en hl 85e4+a*2 y salta a esa direccion.
+---------------------------------------------------------------------------------------------------------------------------------
+
+
+******************************************************************************************************************************
+******************************************************************************************************************************
+
+
+
+
+;Todas las variables se inicializan a 0 menos las siguientes:
+;8d6b <- 4b
+;8d67 <- 20
+;8d68 <- 9
+;8ad4 <- 1
+;80d2 <- 7
+
+
+
+
+
+
+
+;Lista de las funciones que ejecutan los comandos que recibe el driver
+
+;8046    -> Inicio variables
+;8049    -> 
+;8067    -> Inicio Chips
+;806e    -> Fade out
+;807c    -> Fade in
+;8091    -> Comprobar musica
+;809a    -> Efecto (Parametro C)
+;80c5    -> Comprobar efecto
+;804a    -> Activar musica (Parametro HL)
+;80a6    -> Musica incremental (parametro C)
+;8051    -> Apagar musica
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+;8ae1 ---> Tabla de control de los efectos
+;+0 Efecto activado
+;+1,+2 Direccion del efecto+1
+
+;8ae1: Tabla del canal psg 1 para los sfx.
+;8b0f: tabla del canal psg 2 para los sfx.
+
+
+;En 9200 hay una tabla relacionada con los efectos sonoros (creo que son la definicion de los efectos). 
+;El primer byte indica el numero de efectos.
+;Cada efecto ocupa 2 bytes
+
+;2 bytes direccion defiincion del efecto (direccion relativa al comienzo de los efectos)
+;(9200)*2 Inicio de los efectos
+
+;El el driver hay un total de: 37h efectos:
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------------
+;En 9000 esta la definicion de adsr.
+;+0 Tiempo entre actualizaciones del nivel de decay.
+;+1 Valor de mantenimiento
+;+2 Magnitud de decaimiento en cada intervalo
+
+
+;Definiciones de adsr:
+
+ -----------
+| 10|  7| -1|
+|  2|  9| -1|
+|  2|  6| -1|
+|  1|  8|  1|
+|  2| 10| -1|
+|  1|  0| -1|
+|  2|  9|  1|
+| 10|  0| -1|
+|  4|  0| -1|
+|  2|  2| -1|
+| 15|  0| -1|
+|  3| 11| -1|
+| 22|  0| -1|
+|  3| 14| -1|
+|  1|  5| -1|
+|  5|  7| -3|
+ -----------
+
+
+;En 9030 esta la definicion de los distintos tipos de vibratos
+;+0 Tiempo de actualizacion
+;+1 Incremento de la parte menos significativa de la frecuencia
+;+2 Incremento de la parte mas significativa de la frecuencia
+
+
+ -----------
+|  1|-10| -1|    
+|  1| 42|  0|     
+|  1|  5|  0|     
+|  1| -5| -1|     
+|  1| -2| -1|     
+|  2| -1| -1|     
+|  2|  3|  0| 
+|  3|  2|  0|
+|  3| -2| -1|
+|  1| 50|  0|
+|  1|-73| -1| 
+|  1|-68| -1|
+|  1| 20|  0|
+|  1|  3|  0|
+|  1| -3| -1|
+|  0|  0|  0|
+ -----------
+
+
+
+
+
+---------------------------------------------------------------------------------------------------------------------------------------
+
+;Funciones en las que se lee el valor de +17
+->86f3 
+   b7
+   b2
+->8883 (Funcion de salto indirecto para inicializacion)
+   b0-b1
+->88d6 (una de las funciones de inicializacion)
+   b4
+->8901 
+   Paridad del byte completo
+   b6
+   b0-b1   
+->89b3 
+   b3
+   b7
+   
+
+;Funciones en las que se escribe el valor de +17
+->85b7 (funcion de frec)
+->86f3
+   b6 <- 1
+->8901
+   b6 <- 0
+
+
+topologia:
+82e2 (funcion de decodificacion)-> 8901 -> 8883
+					-> salto indirecto					
+					   -> 8956
+					   -> 892d -> 89b3
+					   
+840c(funcion de play) -> 86f3 -> 8883
+			      -> 89b3
+				 
+85b7 (Funcion de frec) -> 8883
+
+
+
+
+
+
+;En 9060 hay otra tabla de definicion del comando frec()
+;   +17   +18 +1a +1b
+0 -> 01    02  55  04 
+1    8e    02  40  01   
+2    8a    02  90  01 
+3    9a    03  f4  01    
+4    82    01  aa  00
+5 -> 8a    04  5b  02 
+6    8a    04  8a  02   
+7    8a    52  2c  01 
+8    8e    02  40  01    
+9    8e    02  40  01
+10 ->9a    01  fa  00 
+11   9a    01  25  00   
+12   8a    04  f0  00 
+13   9a    fc  10  ff 
+   
+14   9a    c8  00  ff
+15-> 9a    81  80  fd 
+
+16   8f    60  01  00 
+17   8e    06  00  02 
+18   8f    ff  01  00    
+19   9a    0c  eb  03
+20-> 9e    03  f4  01
+21   8e    03  20  03  
+
+
+;Hay espacio para definir mas.
+
+
+
+
+;8893 Tabla de direcciones de las rutinas de inicializacion
+:-> 889b -> Carga 0 en +1d,+1c,+19
+;-> 88a6 -> Carga en +19 +18, en +1D +1B, en +1C +1A. Si +18 no es negativo se salta al punto 1 si b4 de +17 no es 0, en caso contrario 
+;	    se salta al punto 2.
+;           Si +18 no es negativo se salta al punto 2 si b4 de +17 no es 0, en caso contrario se sigue por el punto 1
+;           (1) Se niega el valor +18 y se escribe en +18 y se sigue por el punto 2
+;           (2) Se escribe en +19. 
+;-> 88d6 -> Llama a 889b. Despues lee el valor de +18 y hace or para actiar los flags (ni idea de para que sirve +18)
+;-> 88d6           
+
+
+;8925 Tabla de las rutinas encargadas de la reproduccion.
+;-> 892d -> Carga en hl la suma de +1c+1d y +1a+1b y llama a 89f8. Si CF=1 carga en h +18 y en l 0 y complementa el valor. 
+;           Luego (en ambos casos, tanto si CF=1 o CF=0) se compara el valor de +19 con el de h y si son diferentes llama a 
+;	    a 89b3. A continuacion almacena el valor de hl en +1c+1d.	   
+;-> 8956 -> Carga en hl el contenido de +1c+1d, decrementa hl y si es 0 niega +18 y lo almaena en +18. A continuacion llama a 
+;           89b3 y carga el contenido de +1a+1b en +1c+1d (podria ser una onda de tipo triangular?) 
+;-> 8979 -> Esta es mas larga ...
+;-> 8979
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+ 
+;90e0 hay una tabla con definicion de instrumentos de fm. Cada entrada ocupa 8 bytes y coresponden a la configuracion
+;de los 8 primeros registros canales del fm. 64 Instrumentos diferentes.
+
+
+1  -> 51 61 17 07 50 f1 5c dc 
+2  -> 00 21 01 07 da f6 5f ff 
+3  -> 62 41 40 07 fa f6 af ff 
+4  -> 44 71 87 27 fa f5 2a fd 
+5  -> 47 62 24 08 f3 f3 f9 fc 
+6  -> 63 62 15 0f f0 f3 ff ff 
+7  -> 67 60 14 27 f7 f2 8a fa
+8  -> 61 62 0e 06 f5 f2 0f fe 
+9  -> 12 12 1b 07 50 40 10 1a 
+10 -> 60 61 8a 20 f3 f1 3a fa 
+11 -> 43 40 92 07 f4 f2 aa aa 
+12 -> 66 64 15 06 50 83 fa fa 
+13 -> e1 62 05 03 d0 72 2b 7b 
+14 -> 61 65 40 04 f4 f4 1a ac
+15 -> 61 64 40 04 f4 f6 1a 7d
+16 -> 60 61 89 20 f2 f1 5a 1a
+17 -> 43 61 41 00 f9 f6 fc fc
+18 -> 60 61 1d 07 f1 71 1a da
+19 -> 6c 22 59 06 e3 d2 23 4d 
+20 -> 62 62 3f 07 96 76 2a 0a
+21 -> 61 61 5c 00 56 44 1d 0c 
+22 -> 61 62 63 26 36 54 1d 0c
+23 -> 41 41 21 27 f7 50 03 e5 
+24 -> 25 60 1e 15 fa f3 fc 87
+25 -> 00 17 18 00 8f 9f 8f 1f
+26 -> 6a 61 14 7f f7 f2 ff cf
+27 -> 18 41 5c 5f f1 f0 ff ff
+28 -> 04 02 14 8f 71 f1 ff ff  
+29 -> 06 01 1f 2f f4 f3 ff ff
+30 -> 7c 61 1c 5f f6 f2 8f 2f
+31 -> 0c 02 51 1f f1 f2 ff ff
+32 -> 02 42 56 26 f1 f0 ff ff
+;Faltan otros 32
+
+
+
+
+       
+-------------------------------------------------------------------------------------------------------------
+
+
+
+
+;9980 -> Tabla de algo: Musicas incidentales
+
+
+
+
+
+;8a3c Tabla de relacion notas frecuancias
+
+-------------------------------------------------------------------------------------------------------------
+
+
+
+
+;85e4 Hay una tabla con direcciones de rutinas a las que accede a traves del comando ff
+;->85fc  Desactiva el canal
+;->8601  Pone a 0 b3,b5-b6 (Activa el canal).
+;->860c  øPone el canal en modo melodico?
+;->8611  øPone el canal en modo ritmico?
+;->8616  Relacionado con 8ade
+;->862a  Relacionado con 8ade
+;->863e  Pone a 0 b0 de +C
+;->8643  Pone a 1 b0 de +C
+;->8648  Recoge un parametro de la lista de comandos y lo escribe en 8d6b
+;->864f  Recoge un parametro y lo escribe en +1E
+;->8656  Activa el modo ritmico
+;->8661  Activa el modo melodico
+
+
+
+
+
+
+
+
+
+
+;Formato de las tablas de canal:
+;+0   1 duracion restante de la nota
+;+1   2 bytes direccion de continuacion del canal
+;+3   Duracion de la proxima nota que se vaya a tocar
+
+;+C   1 Creo que es el modo de configuracion del canal (e§ valor dependera
+;       de si es un canal PSG o FM).
+;	b7 -> Indica si el canal es PSG o FM (1 PSG,0 FM)
+;	b5 -> Indica si el canal es melodico o ritmico:
+		   En PSG todos los canales pueden ser ritmicos (Aunque esta configurado asi creo que da igual en PSG)
+		   En los SFX PSG solo puede ser melodico el canal 2 (empezando desde 0).
+		   En FM solo pueden ser ritmicos 6,7,8 (empezando desde 0)
+;       b0 -> En PSG idica si el canal es ruido o tono.
+
+;+B   1 b7 -> Este bit esta siempre a 0. Si estuviera a 1 desactivaria la funcion de tiempo de timbre y no se desactivaria 
+;	      la nota al final del tiempo en el FM, ni antes de escribir la siguiente nota 
+	      (oye que eso es lo que pasa al utilizar el comando vib!!!!).
+;       b6 -> Mediante este bit se configura la paridad del byte para activar/desactivar el canal-> paridad impar desactivado.
+;												    paridad par activado.	      
+;       b5 -> Copia del bit de Sustain del FM	      	      
+;	b4 -> Se pone a 1 cuando se escribe la octava en el comando play -> Copia del bit de KEY ON/OFF del FM
+;       b2-b0 Tiempo de duracion del timbre
+;	
+
+
+;+A   1 Almacena un valor que compara con la cuenta. Viene de dividir la duracion por +b & 7. Indica el tiempo de duracion del
+;       timbre del instrumento
+;+2D  1 almacena algo, no se el que
+
+;+1a  2 Tiempo antes de inicializar el comando frec si el bit 6 de +17 esta a 1. En este caso hasta que no se iniciliza 
+;       el canal el comando no tiene efecto.(+1a es el byte menos significativo)
+;       
+;+1c  2 Cuenta actual de +1a.  (+1c es el menos significativo) En caso de que +17 b6 este a 1 indica el numero de ints antes 
+;     de empezar a usar la envolvente (porque previamente se cargo en el el valor de +1e)
+;+1e  1 Si es distinto de 0 indica el tiempo necesario antes de empezar a aplicar la envolvente.
+
+;+17  1 Controla los efectos del comando frec (fe)
+;     b0-b1 Indica la funcion que se usa para inicializar el comando.                                                                                                 
+;     b2    Si es 0 se salta a la rutina de inicializacion al emplear el comando play
+;     b3    Este bit indica si el efecto es sobre la amplitud o sobre la frec.
+;     b4    Este bit indica si es un efecto positivo o negativo.0 positivo, 1 negativo (es necesario para reiniciar la modulacion)
+
+;     b6    El comando play pone este bit a 1 para que no se haga nada en la primera cuenta de +1c. Cuando
+;	    se acabe la cuenta se llamara a la funcion de inicializacion y se reseteara. Play activa el bit 
+;	    si b7 es 1 y se ha cargado algun valor en +1e (es decir mediante este bit se detecta que durante un tiempo 
+;	    no se aplica el comando frec).
+;     b7    Indica envolvente activada.
+
+;+18  1 Limite superior del incremento de la envolvente.
+;+19  1 Valor actual de modificacion
+;+16  1 Tiene algo que ver con la definicion de instrumentos en el FM. Creo que es el
+;       instrumento hard del canal.
+
+
+;+20  2 Con el comando 62 aqui se escribe la direccion de continuacion
+;+D   1 Variable que mide el tiempo de +E.
+;+E   1 Ritmo de decrecimiento del volumen (creo que solo sirve en las baterias psg).
+;+10  1 Numero de unidades de volumen que baja en cada paso de decay.
+;+6   1 Parte mas significativa de una frecuencia (en el psg se pone a +80 en el caso del ruido)
+;+5   1 Parte menos significativa de la frecuencia.
+;+9   1 Volumen en formato hardware
+;+8   1 Volumen 
+;+4   1 Nota a tocar.
+;+7   1 Octava
+;+11  1 
+;+12  1 Cuenta actual de tiempo de actualizacion de vibratos.								      
+;+13  1 Tiempo de actualizacion de la frecuencia en vibratos.
+;+14  1 Numero de unidades que aumenta el byte bajo de la frecuencia
+;+15  1 Numero de unidades que aumenta el byte alto de la frecuencia
+
+
+
+
+
+
+
+;8b3d: Tabla del canal 1 (PSG)
+;8b6b: Tabla del canal 2 (PSG)
+;8b99: tabla del canal 3 (PSG)
+;8bc7: Tabla del canal 3 (FM)
+;8bf5: Tabla del canal 4 (FM)-
+;8c23: Tabla del canal 5 (FM)
+;8c51: Tabla del canal 6 (FM)
+;8c7f: Tabla del canal 7 (FM)
+;8cad: Tabla del canal 8 (FM)
+;8cdb: Tabla del canal 9 (FM)
+;8d09: Tabla del canal 10 (FM)
+
+
+
+
+
+;8add: Controla la ejecucion de la rutina de playing. Esta relacionado con los fades
+;        2 bits superiores de control
+;           b7 : Si el bit esta a 1 se compara el valor & 3f con el de  --> Este bit creo que indica fade activo
+;                8adb. Si es distinto se incrementa 8adb y se pasa a
+;                la decodificacion de los canales. En caso contrario
+;                se escribe un 0 en 8adb y se incrementa 8adc y si este
+;                es mayor de 10 se pasa a la decodificacion. Si no es mayor
+;                se comprueba el valor de 8ad6 si es 0 se escribe un 0 en
+;                8ad4 y se apagan todos los canales y se limpia las
+;                tablas de los canales y se pasa a la
+;                decodificacion. En caso de que 8ad6 sea distinto de 0
+;                se pasa ese valor a 8ad7 y se pone un 0 en 8add y se
+;                apagan los canales y se pasa a decodificar.
+;                
+
+;           b6 : Si es 1 se compara el valor & 3f con el de 8adb. Si es   --> 0 es fade out y 1 fade in
+:                distinto se incrementa 8adb y se pasa a la decodificacion
+;                de los canales. Si es igual se pone a 0 y se decrementa
+;                8adc y si no es 0 8adc se pasa a la decodificacion de los
+;                canales. En caso de que 8adc sea 0 se coloca un 0 en 8add
+
+;8adc: Contador Total de       
+;8adb: Contador parcial. Al llegar al valor de 8add se decrementa 8adc
+
+
+;Procedimiento de decodificacion Inicial:
+;Se coloca 80 en 8ad5 y se pasa el valor de 8ad9 a 8ada y se suman
+;los valores de 8d6c y 8d6b y se toma ese valor como valor de control de
+;la iteracion de decodificacion que viene a continuacion.
+
+
+;Procedimiento de iteracion de decodificacion
+;Si el byte de control es menor que 4b se sale de la iteracion y coloca el
+;valor en 8d6c (antes comprueba el valor de 8ad9) y si el valor de 8da5
+;no es 0 retorna, en caso contrario lee el valor de 8ad8 y si es distinto
+;de 0 inicializa variables y apaga los canales PSG (pone el volumen a 0,
+;no los desactiva).Si 8ad8 es distinto de 0 pone 0 8ad4 y retorna. En el
+;caso de que 82a9 fuera distinto de 0 se coloca 0 en 8ad5 y 8ada y se
+;decodifican los canales 82 y 81 (PSG). Si despues de esto 8ad5 vale
+;distinto de 0 se retorna y en caso contrario se coloca un 0 8ad9.
+
+
+---------------------------------------------------------------------------
+;Descripcion de la funcion 82e2
+;Objetivo: Decodificacion de un canal
+;Si es un canal PSG (el bit superior a 1) carga en b el valor de (8d67) & 20
+;or 8ade&80, y si es fm carga 8ade & 80 (en ambos casos deja el bit 7, que
+;indica si es psg o fm).
+;A continuacion lee el campo +C de la tabla del canal hace la or con b y
+;la and con F y se vuelve a escribirlo en +C.
+;A continuacion se lee el valor de +0 (la duracion restante de la nota)
+;si es 0 se salta a la funcion 8791 (cambiar modo del canal).
+;En caso contrario se carga en 8ad5 (duracion del ultimo canal tocado) 
+;y se llama a la funcion 8901 y se decrementa +0.
+;
+;Resumen: si el canal es fm y la cuenta de duracion es 0 actualiza el campo
+;de Sustain del canal en funcion de si se esta en modo melodico
+;o si se esta en modo ritmico.
+;Si la cuenta no es 0
+
+--------------------------------------------------------------------------
+;Descripcion de la funcion 8901
+;Se lee el valor de +17 y se hace la or, si el resultado tiene paridad
+;par se retorna.
+
+
+---------------------------------------------------------------------------
+;Descripcion de la funcion 8791
+;Objetivo: Configurar el modo del canal
+;Si el valor de 8ade (el canal actual) es menor de 80 (es PSG)
+;mira el valor del bit 5 del campo C de la tabla del canal (define el tipo de canal)
+;(este valor se modifica en 82e2) y si no es 0 le suma 20 al valor leido de
+;8ade (es decir pone el bit a 1) le suma el valor al campo +7 y hace la or
+;con +6, lee el valor de +B para hacer la and con &20 y luego la or con el
+;valor obtenido anteriormente y lo escribe en el registro 8ade+20 del OPLL.
+;    Los registros del 20 al 28 del OPLL tienen la siguiente estructura:
+;       b5 -> Sustain on/off
+;       b4 -> Key on/off
+;       b3-b1 -> Octava
+;       b0 -> Bit mas significativo del F-Number
+
+;Si el bit 5 de +C no es 0, se llama a la funcion 87f5 con a=canal actual.
+;Se complementa el valor devuelto y se hace la and del resultado con
+;8d67 y se vuelve a escribir en 8d67. A continuacion de escribe en el
+;registro ese valor en el registro E del OPLL y despues retorna.
+;     Formato del registro E
+;       b5 -> Seleccion del modo de ritmo (1=modo ritmo,0=modo melodico)
+;       b4-b3 -> Instrumentos de ritmo on/off
+
+
+
+;En caso de que el canal fuera mayor de 80 (es decir es PSG) se hace la and
+;del canal con 8ada y si es distinto de 0 se retorna. En caso contrario
+;se mete en c el valor 9 y se se le hace al registro a la and con 3, si no es 0 se desplaza
+;c a la derecha y se decrementa a (a contiene el canal & 3) y si es 0 salta al
+;punto (1), en caso contrario desplaza otra vez.
+;(1) -> Se comprueba el bit 0 de +C, si no es 0 retorna y en caso contrario
+;se lee el valor de 8adf se le hace la or con c y se vuelve a escribir en
+;8adf y se escribe en el registro 7 del PSG.
+;     Formato del registro 7 del PSG
+;       b7 -> direccion del puerto B
+;       b6 -> direccion del puerto A
+;       b5 -> Canal C de ruido
+;       b4 -> Canal B de ruido
+;       b3 -> Canal A de ruido
+;       b2 -> Canal C Tono
+;       b1 -> Canal B Tono
+;       b0 -> canal A Tono
+; En el caso del psg activa el generador de tonos del canal y le aÒade el
+;canal de ruido.
+-------------------------------------------------------------------------
+
+
+-------------------------------------------------------------------------
+;Descripcion de la funcion 87F5
+;Si el canal de entrada (registro a) es 0 devuelve en a 10 y en b 0.En caso
+;contrario carga en a el valor de b8d6 y decremneta b, si el resultado es 0
+;hace a & F0 y retorna, en caso contrario hace a & 3.
+--------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+;Descripcion de la funcion 8874
+;carga en a (ix+1) e incrementa dicho valor en 1.
+-------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------
+;Descripcion de la funcion 84c4
+;Objetivo: Tocar una nota en un canal fm
+...
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+;Descripcion de la funcion 8442
+;Objetivo: tocar una nota en un canal psg
+
+
+
+-------------------------------------------------------------------------------
+;Descripcion de la funcion 8807
+
+
+-------------------------------------------------------------------------------
+;Descripcion de la funcion 8824
+
+
+
+-------------------------------------------------------------------------------
+;Descripcion de la funcion 866d
+;Toca el volumen del canal actual
+
+
+
+-------------------------------------------------------------------------------
+;Descripcion de la funcion 8a16
+;Objetivo: Sumar hl + a*4
+------------------------------------------------------------------------------
+
+
+
+
+;Copia de los registros del fm.
+;8d59 
+;8d5a
+;8d5b
+;8d5c
+;8d5d
+;8d5e
+;8d5f
+;8d60
+;8d61
+;8d62
+;8d63
+;8d64
+;8d65
+;8d66
+;8d67 -> copia del registro 0e del fm.
+
+
+
+
+
+
+;8ade: Canal que se esta tocando en un momento.
+;8ad4: Indica si se han apagado los canales.
+;8ad5: duracion del ultimo canal tocado
+;8ad6: Si es distinto de 0 se apagan todos los canales y se inicializan
+;      las variables.
+;8ad7: 
+;8ad9: Indica si hay un sfx sonando.
+;8ada: Mascara usada para inhibir psg1 y psg2 mientras haya tocando sfx
+;8adf: Copia del registro 7 del psg
+;8267: tiene algo que ver con el PSG, puede estar relacionado
+;      con los efectos (apagar los canales de psg)
+;83d0: Creo que aqui puede estar la tabla de comandos.
+;      1 byte con un numero. Se le resta al comando de la cancion
+;        si es mayor que 0 se pasa al siguiente y asi hasta que sea
+;        igual o menor que 0. (Es posible que el exceso se pueda usar
+;        como subcomando).
+;      2 bytes con la direccion de definicion del comando.
+;8ae0: Almacena el numero de instrumento software definido
+
+
+
+;Funciones de los comandos de las canciones:
+
+        : 84f1
+             
+:87a1: funcion que escribe la siguiente nota en el psg        
+;8a24: Multiplica hl y de y devuelve en hl
+;8394: Funcion de decodificacion del siguiente comando
+;83a7: Funcion de decodificacion de los comandos
+;82E2: Funcion que toca los canales
+;80d8: Funcion que escribe en el FM.
+;813f: inicializa los punteros de cada canal
+;81ec: Apaga todos los canales FM y apaga el PSG
+;8067: Funcion de inicializacion del driver (variables y chips)
+;8110: Inicializa variables y canal A del PSG
+;80d2: Leer del PSG
+;80ca: escriir en el psg
+;8131: Apaga PSG
+;802c: Salto indexado
+;804a: Entrada de poner musica
+;8a1a: sumar hl y a*2
+;8a1e: sumar hl a a
+;86f3: 
+;8a0e: Niega hl
+;8874: Recoge un valor de la lista de 
+;8807: Escribir frecuencia (octava y frecuencia base) en el chip del canal
+;8824: Escribe una frecuencia determinada en el chip (frecuencia es parametro)
+;89b3: Restaura frecuencia/volumen del canal (usado en el comando frec)
+
+
+
+	.Z80
+bios	macro	adr
+	db	0F7h,80h
+	dw	adr
+	endm
+;
+;
+	.phase	8000h
+;	Offset in file  : 0
+;	End address     : 0A158h
+;	Application type: MSX-DOS program
+;
+BDOS	equ	5
+RDSLT	equ	0Ch
+WRSLT	equ	14h
+;
+        jp      .258           ;[081FCh]
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S8003:	di
+	push	ix
+	push	hl
+	push	de
+	push	bc
+	cp	0Ch
+	jr	nc,.1		;[8025h]
+	add	a,a
+	ld	lx,a
+	ld	hx,0
+	ld	de,T802E	;[802Eh]
+	add	ix,de
+	ld	e,(ix)
+	ld	d,(ix+1)
+	ld	lx,e
+	ld	hx,d
+	call	S802C		;[802Ch]
+.1:	pop	bc
+	pop	de
+	pop	hl
+	pop	ix
+	ei
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S802C:	jp	(ix)
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T802E:	ld	b,(hl)
+	add	a,b
+	ld	b,(hl)
+	add	a,b
+	ld	c,c
+	add	a,b
+	ld	h,a
+	add	a,b
+	ld	l,(hl)
+	add	a,b
+	ld	a,h
+	add	a,b
+	sub	c
+	add	a,b
+	sbc	a,d
+	add	a,b
+	push	bc
+	add	a,b
+	ld	c,d
+	add	a,b
+	and	(hl)
+	add	a,b
+	ld	d,c
+	add	a,b
+	jp	S8110		;[8110h]
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+
+
+
+
+	in	a,(0E6h)	;Unknown port
+	ld	(B810F),a	;[810Fh]
+	jr	.3		;[805Eh]
+
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	in	a,(0E6h)	;Unknown port
+	ld	(B810F),a	;[810Fh]
+	ld	c,1
+	ld	hl,T9980	;[9980h]
+	call	S80B2		;[80B2h]
+.3:	push	hl
+	call	S8110		;[8110h]
+	pop	hl
+	call	S813F		;[813Fh]
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	call	S8110		;[8110h]
+	call	S81EC		;[81ECh]
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	b,c
+	ld	a,80h		;'Ä'
+	or	c
+	ld	(B8ADD),a	;[8ADDh]
+	ld	a,b
+	and	80h		;'Ä'
+	ld	(B8AD6),a	;[8AD6h]
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	a,(B8AD7)	;[8AD7h]
+	or	a
+	ret	z
+	ld	a,0C0h		;'¿'
+	or	c
+	ld	(B8ADD),a	;[8ADDh]
+	ld	a,0Fh
+	ld	(T8ADC),a	;[8ADCh]
+	xor	a
+	ld	(B8AD7),a	;[8AD7h]
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	a,(B8AD4)	;[8AD4h]
+	ld	b,a
+	ld	a,(B8ADD)	;[8ADDh]
+	or	b
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	hl,T9200	;[9200h]
+	call	S80B2		;[80B2h]
+	ret	nc
+	call	S8170		;[8170h]
+	xor	a
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	hl,T9980	;[9980h]
+	call	S80B2		;[80B2h]
+	ret	nc
+	call	S81A9		;[81A9h]
+	xor	a
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S80B2:	ld	d,h
+	ld	e,l
+	ld	a,c
+	dec	a
+	cp	(hl)
+	ld	a,0FFh		;
+	ret	nc
+	ld	b,0
+	add	hl,bc
+	add	hl,bc
+	ld	c,(hl)
+	inc	hl
+	ld	b,(hl)
+	ex	de,hl
+	add	hl,bc
+	scf
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	a,(B8AD9)	;[8AD9h]
+	or	a
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S80CA:  push    af
+	ld	a,b
+	out	(0A0h),a	;PSG address
+	pop	af
+	out	(0A1h),a	;write PSG register
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S80D2:	ld	a,b
+	out	(0A0h),a	;PSG address
+	in	a,(0A2h)	;read PSG register
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S80D8:	push	bc
+	push	af
+	ld	a,(B810F)	;[810Fh]
+	ld	c,a
+.4:	in	a,(0E6h)	;Unknown port
+	sub	c
+	cp	6
+	jr	c,.4		;[80DEh]
+
+        ld	a,b
+	out	(7Ch),a		;MSX-MUSIC
+	in	a,(0E6h)	;Unknown port
+	ld	c,a
+.5:	in	a,(0E6h)	;Unknown port
+	sub	c
+	cp	1
+	jr	c,.5		;[80EBh]
+
+        in	a,(0E6h)	;Unknown port
+	ld	(B810F),a	;[810Fh]
+        pop     af
+	out	(7Dh),a		;MSX-MUSIC
+	pop	bc
+	ret
+
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	push	bc
+	ld	b,a
+	ld	a,(B810F)	;[810Fh]
+B8100	equ	$-1
+;
+T8101:	db	'O'
+.6:	in	a,(0E6h)	;Unknown port
+	sub	c
+	cp	b
+	jr	c,.6		;[8102h]
+	in	a,(0E6h)	;Unknown port
+	ld	(B810F),a	;[810Fh]
+	pop	bc
+	ret
+;
+B810F:	db	50h		;'P'
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+
+S8110:	ld	hl,B8AD4	;[8AD4h]
+	ld	de,B8AD5	;[8AD5h]
+	ld	bc,298h
+	ld	(hl),0
+	ldir
+	ld	a,4Bh		;'K'
+	ld	(B8D6B),a	;[8D6Bh]
+	ld	a,20h		;' '
+	ld	(B8D67),a	;[8D67h]
+	ld	a,9
+	ld	(B8D68),a	;[8D68h]
+	ld	a,1
+	ld	(B8AD4),a	;[8AD4h]
+
+.145:	ld	b,7
+	call	S80D2		;[80D2h]
+	or	3Fh		;'?'
+	ld	(B8ADF),a	;[8ADFh]
+	call	S80CA		;[80CAh]
+	ret
+
+
+
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S813F:	ld	ix,T8B3D	;[8B3Dh]
+	ld	a,(hl)
+	cp	0FEh		;'˛'
+	jr	nz,.7		;[814Ch]
+	ld	de,7
+	add	hl,de
+.7:	ld	e,l
+	ld	d,h
+	inc	hl
+	inc	hl
+.8:	push	hl
+	ld	(ix),1
+	inc	hl
+	inc	hl
+	ld	(ix+1),lx
+	ld	(ix+2),hx
+	pop	hl
+	ld	bc,2Eh
+	add	ix,bc
+	ld	a,(hl)
+	inc	hl
+	ld	h,(hl)
+	ld	l,a
+	add	hl,de
+	push	hl
+	ld	a,(hl)
+	inc	hl
+	or	(hl)
+	pop	hl
+	jr	nz,.8		;[8150h]
+	ret
+
+
+
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S8170:	push	hl
+	ld	hl,T8AE1	;[8AE1h]
+	ld	de,T8AE2	;[8AE2h]
+	ld	bc,2Dh
+	ld	(hl),0
+	ldir
+	pop	hl
+	ld	ix,T8AE1	;[8AE1h]
+	ld	a,(hl)
+.9:	ld	(ix),1
+	inc	hl
+	ld	(ix+1),lx
+	ld	(ix+2),hx
+	ld	de,2Eh
+	add	ix,de
+	call	S8A1E		;[8A1Eh]
+	ld	a,(hl)
+	or	a
+	jr	nz,.9		;[8184h]
+	ld	a,(B8ADF)	;[8ADFh]
+	or	36h		;'6'
+	ld	(B8ADF),a	;[8ADFh]
+	ld	a,3
+	ld	(B8AD9),a	;[8AD9h]
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S81A9:	push	hl
+	ld	a,(B8AD8)	;[8AD8h]
+	or	a
+	jr	nz,.10		;[81BBh]
+	ld	hl,B8ADE	;[8ADEh]
+	ld	de,T8D6D	;[8D6Dh]
+	ld	bc,28Fh
+	ldir
+.10:	call	S8110		;[8110h]
+	ld	a,1
+	ld	(B8AD8),a	;[8AD8h]
+	pop	hl
+	call	S813F		;[813Fh]
+	ret
+.24:	ld	hl,T8D6D	;[8D6Dh]
+	ld	de,B8ADE	;[8ADEh]
+	ld	bc,28Fh
+	ldir
+	xor	a
+	ld	(B8AD8),a	;[8AD8h]
+	ld	a,(B8AE0)	;[8AE0h]
+	call	S84D6		;[84D6h]
+	xor	a
+	ld	b,8
+	call	S80CA		;[80CAh]
+	inc	b
+	call	S80CA		;[80CAh]
+	inc	b
+	call	S80CA		;[80CAh]
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+
+S81EC:	ld	c,9
+	ld	b,30h		;'0'
+.11:	ld	a,0Fh
+	call	S80D8		;[80D8h]
+	inc	b
+	dec	c
+	jr	nz,.11		;[81F0h]
+	jp	.145		;[8131h]
+
+
+
+
+.258:	ld	hl,T8ADB	;[8ADBh]
+	ld	a,(B8ADD)	;[8ADDh]
+S8201	equ	$-1
+	bit	6,a
+	jr	z,.13		;[821Ah]
+
+	and	3Fh		;'?'
+	cp	(hl)
+	jr	z,.14		;[820Eh]
+
+        inc	(hl)
+	jr	.20		;[824Bh]
+
+.14:	xor	a
+	ld	(hl),a
+	inc	hl
+	dec	(hl)
+	jr	nz,.20		;[824Bh]
+
+	xor	a
+	ld	(B8ADD),a	;[8ADDh]
+	jr	.20		;[824Bh]
+
+
+.13:	cp	80h		;'Ä'
+	jr	c,.20		;[824Bh]
+
+	and	3Fh		;'?'
+	cp	(hl)
+	jr	z,.17		;[8226h]
+
+        inc	(hl)
+	jr	.20		;[824Bh]
+
+.17:	xor	a
+	ld	(hl),a
+	inc	hl
+	inc	(hl)
+	ld	a,(hl)
+	cp	10h
+	jr	c,.20		;[824Bh]
+
+	ld	a,(B8AD6)	;[8AD6h]
+	or	a
+	jr	z,.19		;[8241h]
+
+	ld	(B8AD7),a	;[8AD7h]
+	xor	a
+	ld	(B8ADD),a	;[8ADDh]
+	call	S81EC		;[81ECh]
+	jr	.20		;[824Bh]
+
+.19:	xor	a
+	ld	(B8AD4),a	;[8AD4h]
+	call	S8110		;[8110h]
+	call	S81EC		;[81ECh]
+
+.20:	ld	a,80h		;'Ä'
+	ld	(B8AD5),a	;[8AD5h]
+	ld	a,(B8AD9)	;[8AD9h]
+	ld	(B8ADA),a	;[8ADAh]
+	ld	a,(B8D6C)	;[8D6Ch]
+	ld	b,a
+	ld	a,(B8D6B)	;[8D6Bh]
+	add	a,b
+
+.22:	cp	4Bh		;'K'
+	jr	c,.21		;[82ABh]
+	sub	4Bh		;'K'
+	push	af
+	ld	ix,T8B0F	;[8B0Fh]
+	xor	a
+	ld	(B8AD5),a	;[8AD5h]
+	ld	a,80h		;'Ä'
+	call	S82E2		;[82E2h]
+	ld	a,81h		;'Å'
+	call	S82E2		;[82E2h]
+	ld	a,82h		;'Ç'
+	call	S82E2		;[82E2h]
+	xor	a
+	call	S82E2		;[82E2h]
+	ld	a,1
+	call	S82E2		;[82E2h]
+	ld	a,2
+	call	S82E2		;[82E2h]
+	ld	a,3
+	call	S82E2		;[82E2h]
+	ld	a,4
+	call	S82E2		;[82E2h]
+	ld	a,5
+	call	S82E2		;[82E2h]
+	ld	a,6
+	call	S82E2		;[82E2h]
+	ld	a,7
+	call	S82E2		;[82E2h]
+	ld	a,8
+	call	S82E2		;[82E2h]
+	pop	af
+	jr	.22		;[825Eh]
+
+.21:	ld	(B8D6C),a	;[8D6Ch]
+	ld	a,(B8AD9)	;[8AD9h]
+	or	a
+	jr	nz,.23		;[82C4h]
+	ld	a,(B8AD5)	;[8AD5h]
+	or	a
+	ret	nz
+	ld	a,(B8AD8)	;[8AD8h]
+	or	a
+	jp	nz,.24		;[81C8h]
+	ld	(B8AD4),a	;[8AD4h]
+	ret
+
+
+.23:	ld	ix,T8AB3	;[8AB3h]
+	xor	a
+	ld	(B8AD5),a	;[8AD5h]
+	ld	(B8ADA),a	;[8ADAh]
+	ld	a,82h		;'Ç'
+	call	S82E2		;[82E2h]
+	ld	a,81h		;'Å'
+	call	S82E2		;[82E2h]
+	ld	a,(B8AD5)	;[8AD5h]
+	or	a
+	ret	nz
+	ld	(B8AD9),a	;[8AD9h]
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S82E2:	ld	de,2Eh
+	add	ix,de
+	ld	(B8ADE),a	;[8ADEh]
+	and	80h		;'Ä'
+	ld	b,a
+	ld	a,(B8ADE)	;[8ADEh]
+	cp	6
+	jr	c,.25		;[82FBh]
+	ld	a,(B8D67)	;[8D67h]
+	and	20h		;' '
+	or	b
+	ld	b,a
+.25:	ld	a,(ix+0Ch)
+	and	0Fh
+	or	b
+	ld	(ix+0Ch),a
+	ld	a,(ix)
+	or	a
+	jp	z,S8791		;[8791h]
+	ld	a,1
+	ld	(B8AD5),a	;[8AD5h]
+	call	S8901		;[8901h]
+	dec	(ix)
+	bit	7,(ix+0Bh)
+	jr	nz,.27		;[8330h]
+	ld	a,(ix+0Ah)
+	cp	(ix)
+	jr	nz,.27		;[8330h]
+	or	a
+	jr	nz,.28		;[832Dh]
+	ld	a,(B8ADE)	;[8ADEh]
+	add	a,a
+	jr	c,.27		;[8330h]
+.28:	call	S8791		;[8791h]
+.27:	ld	a,(ix)
+	or	a
+	jr	z,.29		;[8394h]
+	ld	a,(ix+0Dh)
+	or	a
+	jr	z,.30		;[8365h]
+	dec	(ix+0Dh)
+	jr	nz,.30		;[8365h]
+	ld	a,(ix+10h)
+	add	a,(ix+9)
+	jr	nc,.31		;[8350h]
+	cp	(ix+0Fh)
+	jr	c,.30		;[8365h]
+	jr	.32		;[8357h]
+.31:	cp	(ix+0Fh)
+	jr	z,.32		;[8357h]
+	jr	nc,.30		;[8365h]
+.32:	ld	(ix+9),a
+	call	S866D		;[866Dh]
+	ld	a,(ix+0Eh)
+	ld	(ix+0Dh),a
+	jr	.33		;[8370h]
+.30:	ld	a,(B8ADD)	;[8ADDh]
+	bit	7,a
+	ld	a,(ix+9)
+	call	nz,S866D	;[866Dh]
+.33:	ld	a,(ix+12h)
+	or	a
+	ret	z
+	dec	(ix+12h)
+	ret	nz
+.38:	ld	a,(ix+13h)
+	ld	(ix+12h),a
+	ld	a,(ix+5)
+	add	a,(ix+14h)
+	ld	(ix+5),a
+	ld	a,(ix+6)
+	adc	a,(ix+15h)
+	ld	(ix+6),a
+	jp	S8807		;[8807h]
+.29:	xor	a
+	ld	(ix+12h),a
+.39:	ld	a,(ix+0Eh)
+	or	a
+	jr	z,T83A7		;[83A7h]
+	ld	(ix+0Dh),a
+	ld	a,(ix+11h)
+	ld	(ix+9),a
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T83A7:	ld	lx,(ix+1)
+	ld	hx,(ix+2)
+	ld	a,(hl)
+	or	a
+	jp	z,S8791		;[8791h]
+	inc	hl
+	ld	(ix+1),lx
+	ld	(ix+2),hx
+	dec	a
+	ld	hl,T83D0	;[83D0h]
+.37:	cp	(hl)
+	jr	c,.36		;[83C6h]
+	sub	(hl)
+	inc	hl
+	inc	hl
+	inc	hl
+	jr	.37		;[83BDh]
+.36:	inc	hl
+	ld	e,(hl)
+	inc	hl
+	ld	d,(hl)
+	ld	hl,T83A7	;[83A7h]
+	push	hl
+	push	de
+	ret
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+
+T83D0:	inc	h
+	inc	c
+	add	a,h
+	ld	bc,T8468	;[8468h]
+	ld	(bc),a
+	add	a,d
+.40:	add	a,h
+	ex	af,af'
+	adc	a,e
+	add	a,h
+	ld	(bc),a
+	adc	a,a
+	add	a,h
+	djnz	.38		;[8379h]
+	add	a,h
+	jr	nz,.39		;[8398h]
+	add	a,h
+	djnz	.40		;[83D8h]
+	add	a,h
+	ld	bc,T850F	;[850Fh]
+	djnz	.41		;[8427h]
+	add	a,l
+	djnz	.42		;[844Bh]
+	add	a,l
+	inc	b
+	halt
+	add	a,l
+	ld	e,e
+	add	a,c
+	add	a,l
+	ex	af,af'
+	add	a,(hl)
+	add	a,l
+	ld	bc,T857E	;[857Eh]
+	ld	bc,T84EE	;[84EEh]
+	ld	bc,T84B1	;[84B1h]
+	ld	bc,T85AD	;[85ADh]
+	ld	bc,T85B7	;[85B7h]
+	ld	bc,T85D6	;[85D6h]
+
+
+;---------------------------------------------------------------
+840c:
+	ld	c,(ix+4)
+	ld	(ix+4),a
+	ld	hl,T8A3C	;[8A3Ch]
+	call	S8A16		;[8A16h]
+	ld	a,(B8ADE)	;[8ADEh]
+	cp	80h		;'Ä'
+	jr	c,.43		;[8439h]
+
+;parte FM
+
+	inc	hl
+	inc	hl
+	ld	e,(hl)
+	inc	hl
+	ld	d,(hl)
+	ld	b,(ix+7)
+.41:	inc	b
+.44:	srl	d
+	rr	e
+	djnz	.44		;[8428h]
+	jr	nc,.45		;[8431h]
+	inc	de
+.45:	ld	(ix+6),d
+	ld	(ix+5),e
+	jr	.53		;[8442h]
+
+
+;parte PSG
+
+
+.43:	ld	a,(hl)
+	ld	(ix+5),a
+	inc	hl
+	ld	a,(hl)
+	ld	(ix+6),a
+
+
+;parte comun
+
+.53:	call	S8807		;[8807h] ;escribe la frecuencia
+	ld	a,(ix+9)
+	call	S866D		;[866Dh] ;Reproduce la nota
+.42:	ld	a,(ix+0Bh)
+	cp	80h		;'Ä'
+	jr	nc,.47		;[8460h]
+
+	add	a,40h		;'@'
+	jp	p,.48		;[845Ah]
+
+	ld	(ix+0Bh),a
+
+.48:	call	S8791		;[8791h] ;Pone el canal en el modo configurado
+	call	S86F3		;[86F3h]
+.47:	ld	a,(ix+3)
+	ld	(ix),a
+	pop	hl
+	ret
+
+
+
+
+
+
+
+
+T8468:	db	'›6',0Ch,0
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T846C:	call	S8791		;[8791h]
+	ld	a,(ix+3)
+	ld	(ix),a
+	pop	hl
+	ld	a,(ix+0Bh)
+	add	a,40h		;'@'
+	ret	p
+	and	7Fh		;''
+	ld	(ix+0Bh),a
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	or	a
+	jr	nz,.49		;[8486h]
+	dec	a
+.49:	add	a,(ix+7)
+	and	7
+	ld	(ix+7),a
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	or	a
+	jr	nz,.50		;[8493h]
+	dec	a
+.50:	add	a,(ix+8)
+	and	0Fh
+	ld	(ix+8),a
+	ld	(ix+0Eh),0
+	ld	(ix+0Dh),0
+	bit	7,(ix+0Ch)
+	jr	nz,.51		;[84ADh]
+	ld	b,a
+	ld	a,0Fh
+	sub	b
+.51:	ld	(ix+9),a
+	ret
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T84B1:	call	S8874		;[8874h]
+	bit	7,(ix+0Ch)
+	jr	z,.52		;[84C4h]
+	ld	(ix+6),80h	;'Ä'
+	ld	(ix+5),a
+	jp	.53		;[8442h]
+.52:	cp	10h
+	jr	nc,.54		;[84CDh]
+	ld	(ix+16h),a
+	jr	.55		;[84EDh]
+.54:	ld	(ix+16h),0
+	sub	10h
+	ld	(B8AE0),a	;[8AE0h]
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S84D6:	ld	l,a
+	ld	h,0
+	add	hl,hl
+	add	hl,hl
+	add	hl,hl
+	ld	de,(W8AD2)	;[8AD2h]
+	add	hl,de
+	ld	b,0
+.56:	ld	a,(hl)
+	inc	hl
+	call	S80D8		;[80D8h]
+	inc	b
+	bit	3,b
+	jr	z,.56		;[84E3h]
+.55:	ret
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T84EE:	call	S8874		;[8874h]
+	push	ix
+	pop	hl
+	ld	de,2Dh
+	add	hl,de
+	ld	d,h
+	ld	e,l
+	dec	hl
+	dec	hl
+	dec	hl
+	ld	bc,RDSLT	;[0Ch]
+	lddr
+	inc	hl
+	ld	(hl),a
+	ld	a,(ix+1)
+	inc	hl
+	ld	(hl),a
+	ld	a,(ix+2)
+	inc	hl
+	ld	(hl),a
+	ret
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T850F:	ld	a,(ix+1Fh)
+	or	a
+	jr	z,.57		;[851Bh]
+	dec	a
+	jr	z,.58		;[8528h]
+	ld	(ix+1Fh),a
+.57:	ld	a,(ix+20h)
+	ld	(ix+1),a
+	ld	a,(ix+21h)
+	ld	(ix+2),a
+	ret
+.58:	push	ix
+	pop	hl
+	ld	de,1Fh
+	add	hl,de
+	ex	de,hl
+	ld	hl,3
+	add	hl,de
+	ld	bc,RDSLT	;[0Ch]
+	ldir
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	l,a
+	add	a,a
+	add	a,l
+	ld	hl,(W8ACC)	;[8ACCh]
+	call	S8A1E		;[8A1Eh]
+	ld	a,(hl)
+	ld	(ix+0Dh),a
+	ld	(ix+0Eh),a
+	inc	hl
+	ld	a,(hl)
+	ld	(ix+0Fh),a
+	inc	hl
+	ld	a,(hl)
+	ld	(ix+10h),a
+	ld	a,(ix+9)
+	ld	(ix+11h),a
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	l,a
+	add	a,a
+	add	a,l
+	ld	hl,(W8ACE)	;[8ACEh]
+	call	S8A1E		;[8A1Eh]
+	ld	a,(hl)
+	ld	(ix+12h),a
+	ld	(ix+13h),a
+	inc	hl
+	ld	a,(hl)
+	ld	(ix+14h),a
+	inc	hl
+	ld	a,(hl)
+	ld	(ix+15h),a
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	sub	2
+	jr	c,.59		;[857Bh]
+	inc	a
+.59:	add	a,(ix+3)
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T857E:	call	S8874		;[8874h]
+	ld	(ix+3),a
+	jr	.60		;[8590h]
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	b,a
+	ld	a,(ix+0Bh)
+	and	0F0h		;''
+	or	b
+	ld	(ix+0Bh),a
+.60:	ld	hx,(ix+3)
+	xor	a
+	srl	h
+	rra
+	srl	h
+	rra
+	srl	h
+	rra
+	ld	l,a
+	ld	a,(ix+0Bh)
+	and	7
+	ld	d,0
+	ld	e,a
+	call	S8A24		;[8A24h]
+	ld	(ix+0Ah),hx
+	ret
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T85AD:	call	S8874		;[8874h]
+	ld	b,a
+	call	S8874		;[8874h]
+	jp	S80D8		;[80D8h]
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T85B7:	call	S8874		;[8874h]
+	ld	hl,(W8AD0)	;[8AD0h]
+	call	S8A16		;[8A16h]
+	ld	a,(hl)
+	ld	(ix+17h),a
+	inc	hl
+	ld	a,(hl)
+	ld	(ix+18h),a
+.211	equ	$-1
+	inc	hl
+	ld	a,(hl)
+	ld	(ix+1Ah),a
+	inc	hl
+	ld	a,(hl)
+	ld	(ix+1Bh),a
+	jp	S8883		;[8883h]
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T85D6:	call	S8874		;[8874h]
+	ld	hl,T85E4	;[85E4h]
+	call	S8A1A		;[8A1Ah]
+	ld	a,(hl)
+	inc	hl
+	ld	h,(hl)
+	ld	l,a
+	jp	(hl)
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T85E4:	call	m,185h
+	add	a,(hl)
+	inc	c
+	add	a,(hl)
+	ld	de,1686h
+	add	a,(hl)
+	ld	hl,(3E86h)
+	add	a,(hl)
+	ld	b,e
+	add	a,(hl)
+	ld	c,b
+	add	a,(hl)
+	ld	c,a
+	add	a,(hl)
+	ld	d,(hl)
+	add	a,(hl)
+	ld	h,c
+	add	a,(hl)
+	set	6,(ix+0Bh)
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	a,(ix+0Bh)
+	and	37h		;'7'
+	ld	(ix+0Bh),a
+	jp	S8791		;[8791h]
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	res	5,(ix+0Bh)
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	set	5,(ix+0Bh)
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	hl,B8D68	;[8D68h]
+	ld	a,(B8ADE)	;[8ADEh]
+	cp	7
+	jr	nz,.62		;[8625h]
+	res	2,(hl)
+	set	3,(hl)
+	ret
+.62:	res	1,(hl)
+	set	0,(hl)
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	hl,B8D68	;[8D68h]
+	ld	a,(B8ADE)	;[8ADEh]
+	cp	7
+	jr	nz,.63		;[8639h]
+	set	2,(hl)
+	res	3,(hl)
+	ret
+.63:	set	1,(hl)
+	res	0,(hl)
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	res	0,(ix+0Ch)
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	set	0,(ix+0Ch)
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	call	S8874		;[8874h]
+	ld	(B8D6B),a	;[8D6Bh]
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	call	S8874		;[8874h]
+	ld	(ix+1Eh),a
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	a,20h		;' '
+	ld	(B8D67),a	;[8D67h]
+	ld	b,0Eh
+	call	S80D8		;[80D8h]
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	xor	a
+	ld	(B8D67),a	;[8D67h]
+	ld	b,0Eh
+	call	S80D8		;[80D8h]
+	ret
+.64:	jr	.64		;[866Bh]
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+
+
+
+
+S866D:	push	hl
+	push	bc
+	push	de
+	ld	c,a
+	ld	a,(B8ADD)	;[8ADDh]
+	and	80h		;'Ä'
+	jr	z,.65		;[8691h]
+	ld	hl,T8ADC	;[8ADCh]
+	bit	7,(ix+0Ch)
+	jr	z,.66		;[8688h]
+	ld	a,c
+	sub	(hl)
+	jr	nc,.68		;[8690h]
+	xor	a
+	jr	.68		;[8690h]
+.66:	ld	a,c
+	add	a,(hl)
+	cp	0Fh
+	jr	c,.68		;[8690h]
+	ld	a,0Fh
+.68:	ld	c,a
+.65:	ld	a,(B8AD7)	;[8AD7h]
+	or	a
+	jr	nz,.71		;[86EFh]
+	ld	a,(B8ADE)	;[8ADEh]
+	cp	80h		;'Ä'
+	jr	c,.70		;[86AFh]
+	ld	b,a
+	ld	a,(B8ADA)	;[8ADAh]
+	and	b
+	jr	nz,.71		;[86EFh]
+	ld	a,b
+	add	a,88h		;'à'
+	ld	b,a
+	ld	a,c
+	call	S80CA		;[80CAh]
+	jr	.71		;[86EFh]
+.70:	bit	5,(ix+0Ch)
+	jr	z,.72		;[86E1h]
+	cp	7
+	jr	c,.72		;[86E1h]
+	jr	z,.73		;[86C9h]
+	ld	a,c
+	ld	(B8D6A),a	;[8D6Ah]
+	add	a,a
+	add	a,a
+	add	a,a
+	add	a,a
+	ld	c,a
+	ld	a,(B8D69)	;[8D69h]
+	jr	.74		;[86D4h]
+.73:	ld	a,c
+	ld	(B8D69),a	;[8D69h]
+	ld	a,(B8D6A)	;[8D6Ah]
+	add	a,a
+	add	a,a
+	add	a,a
+	add	a,a
+.74:	or	c
+	ld	b,37h		;'7'
+	call	S80D8		;[80D8h]
+	rrca
+	rrca
+	rrca
+	rrca
+	inc	b
+	jr	.75		;[86ECh]
+.72:	add	a,30h		;'0'
+	ld	b,a
+	ld	a,(ix+16h)
+	add	a,a
+	add	a,a
+	add	a,a
+	add	a,a
+	or	c
+.75:	call	S80D8		;[80D8h]
+.71:	pop	de
+	pop	bc
+	pop	hl
+	ret
+
+
+
+
+
+
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S86F3:	ld	a,(B8AD7)	;[8AD7h]
+	or	a
+	ret	nz
+
+
+	push	bc
+	ld	a,(B8ADE)	;[8ADEh]
+	cp	80h		;'Ä'
+	jr	nc,.76		;[8738h]
+
+
+;Parte FM
+
+	bit	5,(ix+0Ch)
+	jr	z,.77		;[8719h]
+
+	call	S87F5		;[87F5h]
+	ld	b,a
+	ld	a,(B8D67)	;[8D67h]
+	or	b
+	ld	(B8D67),a	;[8D67h]
+	ld	b,0Eh
+	call	S80D8		;[80D8h] ;escribe en el registro de ritmo del FM
+	jp	.90		;[87F3h] ;Retorna
+
+
+.77:	add	a,10h
+	ld	b,a
+	ld	a,(ix+5)	;Escribe la parte menos significativa de la frecuencia
+	call	S80D8		;[80D8h]
+	ld	a,b
+	add	a,10h
+	ld	b,a
+	ld	a,(ix+7)
+	add	a,a
+	or	(ix+6)
+	or	10h		;Escribe la octava
+	call	S80D8		;[80D8h]
+	set	4,(ix+0Bh)	;Salta a tareas de frec
+	jr	.79		;[8770h] 
+
+
+;Parte PSG
+
+.76:	ld	b,a
+	ld	a,(B8ADA)	;[8ADAh]
+	and	b
+	jr	nz,.79		;[8770h]
+	ld	a,b
+	and	3
+	add	a,a
+	jr	nz,.80		;[8747h]
+
+
+	ld	a,1
+.80:	ld	c,a
+	cpl
+	bit	0,(ix+0Ch)
+	jr	z,.81		;[8751h]
+
+
+	ld	c,0
+.81:	bit	7,(ix+6)
+	jr	z,.82		;[875Ch]
+
+	rlca
+	rlca
+	rlca
+	jr	.83		;[8762h]
+
+
+.82:	rlc	c
+	rlc	c
+	rlc	c
+.83:	ld	b,a
+	ld	a,(B8ADF)	;[8ADFh]
+	and	b
+	or	c
+	ld	(B8ADF),a	;[8ADFh]
+	ld	b,7
+	call	S80CA		;[80CAh]
+
+;Parte del comando frec
+
+
+.79:	pop	bc
+	bit	7,(ix+17h)
+	ret	z
+
+	ld	a,(ix+1Eh)
+	or	a
+	jr	z,.84		;[8784h]
+
+	ld	(ix+1Ch),a
+	set	6,(ix+17h)
+	ret
+
+.84:	bit	2,(ix+17h)
+	call	nz,S8883	;[8883h]
+	ld	a,(ix+19h)
+	jp	S89B3		;[89B3h]
+
+
+
+
+
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S8791:	push	bc
+	ld	a,(B8ADE)	;[8ADEh]
+	cp	80h		;'Ä'
+	jr	c,.86		;[87C2h]
+	ld	b,a
+	ld	a,(B8ADA)	;[8ADAh]
+	and	b
+	jr	nz,.90		;[87F3h]
+	ld	a,b
+	ld	c,9
+	and	3
+	jr	z,.87		;[87AEh]
+	sla	c
+	dec	a
+	jr	z,.87		;[87AEh]
+	sla	c
+.87:	bit	0,(ix+0Ch)
+	jr	nz,.90		;[87F3h]
+	ld	a,(B8ADF)	;[8ADFh]
+	or	c
+	ld	(B8ADF),a	;[8ADFh]
+	ld	b,7
+	call	S80CA		;[80CAh]
+	jr	.90		;[87F3h]
+.86:	bit	5,(ix+0Ch)
+	jr	z,.89		;[87DBh]
+	call	S87F5		;[87F5h]
+	cpl
+	ld	b,a
+	ld	a,(B8D67)	;[8D67h]
+	and	b
+	ld	(B8D67),a	;[8D67h]
+	ld	b,0Eh
+	call	S80D8		;[80D8h]
+	jr	.90		;[87F3h]
+.89:	add	a,20h		;' '
+	ld	b,a
+	ld	a,(ix+7)
+	add	a,a
+	or	(ix+6)
+	ld	c,a
+	ld	a,(ix+0Bh)
+	and	20h		;' '
+	or	c
+	call	S80D8		;[80D8h]
+	res	4,(ix+0Bh)
+.90:	pop	bc
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S87F5:	sub	6
+	ld	b,a
+	ld	a,10h
+	ret	z
+	ld	a,(B8D68)	;[8D68h]
+	dec	b
+	jr	nz,.91		;[8804h]
+	and	0Ch
+	ret
+.91:	and	3
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S8807:	push	hl
+	ld	a,(B8ADE)	;[8ADEh]
+	cp	80h		;'Ä'
+	jr	c,.92		;[8814h]
+	ld	hx,(ix+6)
+	jr	.93		;[881Ch]
+.92:	ld	a,(ix+7)
+	add	a,a
+	or	(ix+6)
+	ld	h,a
+.93:	ld	lx,(ix+5)
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S881F:	call	S8824		;[8824h]
+	pop	hl
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+
+
+
+;Entrada hl -> Es una frecuencia
+
+
+S8824:	push	bc
+	ld	a,(B8ADE)	;[8ADEh]
+	cp	80h		;'Ä'
+	jr	c,.94		;[8849h]
+
+
+;Parte PSG
+
+	ld	b,a
+	ld	a,(B8ADA)	;[8ADAh]
+	and	b
+	jr	nz,.98		;[8872h] retorna
+
+	bit	7,h
+	jr	nz,.96		;[8841h]
+
+
+	sla	b
+	ld	a,l
+	call	S80CA		;[80CAh]
+	inc	b
+	ld	a,h
+	jr	.97		;[8844h]
+
+
+.96:	ld	b,6
+	ld	a,l
+.97:	call	S80CA		;[80CAh]
+	jr	.98		;[8872h]
+
+
+
+;Parte FM
+
+.94:	bit	5,(ix+0Ch)
+	jr	z,.99		;[885Eh]
+
+	cp	7
+	jr	c,.99		;[885Eh]
+
+	ld	a,(B8D68)	;[8D68h]
+	and	9
+	ld	a,7
+	jr	nz,.99		;[885Eh]
+
+
+	ld	a,8
+.99:	add	a,10h
+	ld	b,a
+	ld	a,l
+	call	S80D8		;[80D8h]
+	ld	a,b
+	add	a,10h
+	ld	b,a
+	ld	a,(ix+0Bh)
+	and	10h
+	or	h
+	call	S80D8		;[80D8h]
+.98:	pop	bc
+	ret
+
+
+
+
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S8874:	ld	hx,(ix+2)
+	ld	lx,(ix+1)
+	ld	a,(hl)
+	inc	hl
+	ld	(ix+2),hx
+	ld	(ix+1),lx
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+
+S8883:	ld	a,(ix+17h)
+	and	3
+	ld	hl,T8893	;[8893h]
+	call	S8A1A		;[8A1Ah]
+	ld	a,(hl)
+	inc	hl
+	ld	h,(hl)
+	ld	l,a
+	jp	(hl)
+
+
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T8893:	sbc	a,e
+	adc	a,b
+	and	(hl)
+	adc	a,b
+	sub	88h		;'à'
+	sub	88h		;'à'
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S889B:	xor	a
+	ld	(ix+1Dh),a
+	ld	(ix+1Ch),a
+	ld	(ix+19h),a
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	a,(ix+18h)
+	ld	(ix+19h),a
+	ld	a,(ix+1Bh)
+	ld	(ix+1Dh),a
+	ld	a,(ix+1Ah)
+	ld	(ix+1Ch),a
+	ld	a,(ix+18h)
+	or	a
+	jp	m,.100		;[88C7h]
+
+	bit	4,(ix+17h)
+	jr	nz,.101		;[88CDh]
+
+	jr	.102		;[88D2h]
+
+.100:	bit	4,(ix+17h)
+	jr	nz,.102		;[88D2h]
+
+.101:	neg
+	ld	(ix+18h),a
+.102:	ld	(ix+19h),a
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	call	S889B		;[889Bh]
+	ld	a,(ix+18h)
+	or	a
+	jp	m,.103		;[88E7h]
+	bit	4,(ix+17h)
+	jr	nz,.104		;[88ECh]
+	ret
+.103:	bit	4,(ix+17h)
+	ret	nz
+.104:	neg
+	ld	(ix+18h),a
+	ld	hx,(ix+1Bh)
+	ld	lx,(ix+1Ah)
+	call	S8A0E		;[8A0Eh]
+	ld	(ix+1Bh),hx
+	ld	(ix+1Ah),lx
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S8901:	ld	a,(ix+17h)
+	or	a
+	ret	p
+
+	bit	6,a
+	jr	z,.105		;[8915h]
+
+        dec	(ix+1Ch)
+	ret	nz
+
+        call	S8883		;[8883h]
+	res	6,(ix+17h)
+.105:	ld	a,(ix+17h)
+	and	3
+	ld	hl,T8925	;[8925h]
+	call	S8A1A		;[8A1Ah]
+	ld	a,(hl)
+	inc	hl
+	ld	h,(hl)
+	ld	l,a
+	jp	(hl)
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T8925:	dec	l
+	adc	a,c
+	ld	d,(hl)
+	adc	a,c
+	ld	a,c
+	adc	a,c
+	ld	a,c
+	adc	a,c
+	ld	a,(ix+1Ch)
+	add	a,(ix+1Ah)
+	ld	l,a
+	ld	a,(ix+1Dh)
+	adc	a,(ix+1Bh)
+	ld	h,a
+	call	S89F8		;[89F8h]
+	jr	nc,.106		;[8948h]
+	ld	hx,(ix+18h)
+	ld	l,0
+	call	S8A0E		;[8A0Eh]
+.106:	ld	a,h
+	cp	(ix+19h)
+	call	nz,S89B3	;[89B3h]
+	ld	(ix+1Dh),hx
+	ld	(ix+1Ch),lx
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	lx,(ix+1Ch)
+	ld	hx,(ix+1Dh)
+	dec	hl
+	ld	a,h
+	or	l
+	jr	nz,.107		;[8972h]
+	ld	a,(ix+18h)
+	neg
+	ld	(ix+18h),a
+	call	S89B3		;[89B3h]
+	ld	hx,(ix+1Bh)
+	ld	lx,(ix+1Ah)
+.107:	ld	(ix+1Ch),lx
+	ld	(ix+1Dh),hx
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	a,(ix+1Ch)
+	add	a,(ix+1Ah)
+	ld	l,a
+	ld	a,(ix+1Dh)
+	adc	a,(ix+1Bh)
+	ld	h,a
+	call	S89F8		;[89F8h]
+	jr	nc,.108		;[89A5h]
+	ex	de,hl
+	ld	a,(ix+18h)
+	neg
+	ld	(ix+18h),a
+	ld	hx,(ix+1Bh)
+	ld	lx,(ix+1Ah)
+	call	S8A0E		;[8A0Eh]
+	ld	(ix+1Ah),lx
+	ld	(ix+1Bh),hx
+	ex	de,hl
+.108:	ld	a,h
+	cp	(ix+19h)
+	call	nz,S89B3	;[89B3h]
+	ld	(ix+1Ch),lx
+	ld	(ix+1Dh),hx
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+
+;Entrada a -> valor a almacenar en +19
+
+
+
+S89B3:	push	hl
+	ld	(ix+19h),a
+	bit	3,(ix+17h)
+	jr	nz,.109		;[89D4h]
+
+	add	a,(ix+9)
+	ld	b,a
+	ld	a,(B8ADE)	;[8ADEh]
+	cp	80h		;'Ä'
+	ld	a,b
+	jr	c,.110		;[89CDh]
+
+	cp	10h
+	jr	.111		;[89CFh]
+
+.110:	cp	80h		;'Ä'
+.111:	call	c,S866D		;[866Dh]
+	pop	hl
+	ret
+
+
+
+
+
+.109:	ld	l,a
+	and	80h		;'Ä'
+	jr	z,.112		;[89DBh]
+
+	ld	a,0FFh		;
+.112:	ld	h,a
+	ld	a,(ix+5)
+	add	a,l
+	ld	l,a
+	ld	a,(ix+6)
+	adc	a,h
+	ld	h,a
+	ld	a,(B8ADE)	;[8ADEh]
+	cp	80h		;'Ä'
+	jr	nc,.113		;[89F3h]
+
+	ld	a,(ix+7)
+	add	a,a
+	or	h
+	ld	h,a
+.113:	call	S8824		;[8824h] Escribe la frecuencia en el chip
+	pop	hl
+	ret
+
+
+
+
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S89F8:	bit	7,(ix+18h)
+	jr	nz,.114		;[8A07h]
+	ld	a,h
+	or	a
+	ret	m
+	sub	(ix+18h)
+	ret	z
+	ccf
+	ret
+.114:	ld	a,h
+	or	a
+	ret	p
+	sub	(ix+18h)
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S8A0E:	ld	a,h
+	cpl
+	ld	h,a
+	ld	a,l
+	cpl
+.118:	ld	l,a
+	inc	hl
+	ret
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S8A16:	add	a,a
+	jr	nc,S8A1A	;[8A1Ah]
+.119:	inc	h
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+
+
+
+;Objetivo Sumar a y hl de una manera rara
+;Entrada: hl
+;         a
+;salida:  hl
+
+
+
+S8A1A:	add	a,a
+	jr	nc,S8A1E	;[8A1Eh]
+	inc	h
+
+
+
+S8A1E:	add	a,l
+	jr	nc,.115		;[8A22h]
+	inc	h
+.115:	ld	l,a
+	ret
+
+
+
+
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S8A24:	push	bc
+	ld	c,e
+	ld	b,d
+	ex	de,hl
+	ld	hl,0
+.117:	srl	b
+	rr	c
+	jr	nc,.116		;[8A32h]
+	add	hl,de
+.116:	sla	e
+	rl	d
+	ld	a,b
+	or	c
+	jr	nz,.117		;[8A2Bh]
+	pop	bc
+	ret
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T8A3C:	xor	d
+	nop
+	call	m,0AC1Ah
+	nop
+	or	a
+	ld	a,(de)
+	xor	l
+	nop
+	ld	(hl),e
+	ld	a,(de)
+	or	h
+	nop
+	ld	a,d
+	add	hl,de
+	or	(hl)
+	nop
+	add	hl,sp
+	add	hl,de
+	or	a
+	nop
+	ld	sp,hl
+	jr	.118		;[8A13h]
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	nop
+	inc	d
+	jr	.119		;[8A19h]
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	nop
+	sub	17h
+	jp	nz,T9A00	;[9A00h]
+	rla
+.124:	jp	z,0B300h
+	ld	d,0CCh		;'Ã'
+	nop
+	ld	a,c
+	ld	d,0CEh		;'Œ'
+	nop
+	ld	b,b
+	ld	d,0D6h		;'÷'
+	nop
+	ld	l,l
+	dec	d
+	ret	c
+	nop
+	ld	(hl),15h
+	jp	c,0
+	dec	d
+	ex	(sp),hl
+	nop
+	add	hl,sp
+	inc	d
+	push	hl
+	nop
+	dec	b
+	inc	d
+	rst	20h
+	nop
+	out	(13h),a		;Unknown port
+	ret	p
+	nop
+	ld	d,13h
+	jp	p,0E500h
+	ld	(de),a
+	push	af
+	nop
+	or	l
+	ld	(de),a
+	cp	0
+	inc	b
+	ld	(de),a
+	ld	bc,0D601h
+	ld	de,103h
+	xor	c
+	ld	de,10Dh
+	ld	bc,1011h
+	ld	bc,10D6h
+	inc	de
+	ld	bc,10ABh
+	dec	e
+	ld	bc,100Dh
+	jr	nz,.123		;[8AAFh]
+	call	po,230Fh
+.123	equ	$-2
+	ld	bc,0FBBh
+T8AB3	equ	$-1
+	ld	l,1
+	ld	h,0Fh
+	ld	(0FF01h),a
+	ld	c,35h
+	ld	bc,0ED9h
+	ld	b,b
+	ld	bc,0E4Ch
+	ld	b,h
+	ld	bc,0E28h
+	ld	b,a
+	ld	bc,0E04h
+;
+W8ACC:	dw	9000h
+W8ACE:	dw	9030h
+W8AD0:	dw	9060h
+W8AD2:	dw	90E0h
+B8AD4:	db	0
+B8AD5:	db	0
+B8AD6:	db	0
+B8AD7:	db	0
+B8AD8:	db	0
+B8AD9:	db	0
+B8ADA:	db	0
+T8ADB:	db	0
+T8ADC:	db	0
+B8ADD:	db	0
+B8ADE:	db	8
+B8ADF:	db	0BFh		;'ø'
+B8AE0:	db	0
+T8AE1:	db	0
+T8AE2:	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+T8B0F:	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+T8B3D:	db	0,0,0,0,0,0,0,0,0,0,0,0,0A0h,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0A0h,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0A0h,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	' ',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,' ',0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,' ',0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+B8D67:	db	20h		;' '
+B8D68:	db	9
+B8D69:	db	0
+B8D6A:	db	0
+B8D6B:	db	4Bh		;'K'
+B8D6C:	db	0
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T8D6D:	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+.128:	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	ei
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	28h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	18h		;Print character [A] (BASIC,NIKE)
+	nop
+	ld	a,a
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	sub	b
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	add	a,b
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	adc	a,a
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	ld	a,a
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T8E00:	ld	a,a
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S8E01:	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	ld	(hl),a
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	ld	a,a
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	djnz	.129		;[8F32h]
+.129	equ	$-1
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	ld	a,a
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	ei
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	28h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	ld	a,a
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	sub	b
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	add	a,b
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	8
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	ld	a,a
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	rst	38h
+	nop
+	rst	38h
+	nop
+	nop
+	rst	38h
+	nop
+	rst	38h
+	ld	a,(bc)
+	rlca
+	rst	38h
+	ld	(bc),a
+	add	hl,bc
+	rst	38h
+	ld	(bc),a
+	ld	b,0FFh		;
+	ld	bc,108h
+	ld	(bc),a
+	ld	a,(bc)
+	rst	38h
+	ld	bc,0FF00h
+	ld	(bc),a
+	add	hl,bc
+	ld	bc,0Ah
+	rst	38h
+	inc	b
+	nop
+	rst	38h
+	ld	(bc),a
+	ld	(bc),a
+	rst	38h
+	rrca
+	nop
+	rst	38h
+	inc	bc
+	dec	bc
+	rst	38h
+	ld	d,0
+	rst	38h
+	inc	bc
+	dec	c
+	rst	38h
+	ld	bc,0FF05h
+	dec	b
+	rlca
+	call	m,0F601h
+	rst	38h
+	ld	bc,28h
+	ld	bc,BDOS		;[5]
+	ld	bc,0FFFBh
+	ld	bc,0FFFEh
+	ld	(bc),a
+	rst	38h
+	rst	38h
+	ld	(bc),a
+	inc	bc
+	nop
+	inc	bc
+	ld	(bc),a
+	nop
+	inc	bc
+	cp	0FFh		;
+	ld	bc,32h
+	ld	bc,0FFB5h
+	ld	bc,0FFB0h
+	ld	bc,WRSLT	;[14h]
+	ld	bc,3
+	ld	bc,0FFFDh
+	nop
+	nop
+	nop
+	ld	bc,5502h
+	inc	b
+	adc	a,(hl)
+	ld	(bc),a
+	ld	b,b
+	ld	bc,28Ah
+	sub	b
+	ld	bc,39Ah
+	call	p,S8201		;[8201h]
+	ld	bc,0AAh
+	adc	a,d
+	inc	b
+	ld	e,b
+	ld	(bc),a
+	adc	a,d
+	inc	b
+	adc	a,d
+	ld	(bc),a
+	adc	a,d
+	ld	d,d
+	inc	l
+	ld	bc,28Eh
+	ld	b,b
+	ld	bc,28Eh
+	ld	b,b
+	ld	bc,19Ah
+	jp	m,T9A00		;[9A00h]
+	ld	bc,25h
+	adc	a,d
+	inc	b
+	ret	p
+	nop
+	sbc	a,d
+	call	m,0FF10h
+	sbc	a,d
+	ret	z
+	nop
+	rst	38h
+	sbc	a,d
+	add	a,c
+	add	a,b
+	db	0FDh		;Invalid op-code '˝'
+	adc	a,a
+	ld	h,b
+	ld	bc,T8E00	;[8E00h]
+	ld	b,0
+	ld	(bc),a
+	adc	a,a
+	rst	38h
+	ld	bc,T9A00	;[9A00h]
+	inc	c
+	ret	pe
+	inc	bc
+	sbc	a,(hl)
+	inc	bc
+	call	p,S8E01		;[8E01h]
+	inc	bc
+	jr	nz,.130		;[90BBh]
+	nop
+	nop
+	nop
+;
+.130:	db	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db	0,0,0,0,0,0,0,0,0,0,'Qa',17h,7,'PÒ\‹',0,'!',1,7,'⁄ˆ_'
+	db	0FFh,'bA@',7,'˙ˆ',0AFh,0FFh,'Dq',87h,'''˙ı*˝Gb$',8,'Û'
+	db	'Û˘¸cb',15h,0Fh,'Û',0FFh,0FFh,'g`',14h,'''˜Ú',8Ah,'˙'
+	db	'ab',0Eh,6,'ıÚ',0Fh,'˛',12h,12h,1Bh,7,'P@',10h,1Ah,'`'
+	db	'a',8Ah,' ÛÒ:˙C@',92h,7,'ÙÚ',0AAh,0AAh,'fd',15h,6,'P'
+	db	83h,'˙˙·b',5,3,'–r+˚ae@',4,'ÙÙ',1Ah,0ACh,'ae@',4,'Ùˆ'
+	db	1Ah,'}`a',89h,' ÚÒZ',1Ah,'CaA',0,'˘ˆ¸¸`a',1Dh,7,'Òq',1Ah
+	db	'⁄l"Y',6,'„“#Mbb?',7,96h,'v*',0Ah,'aa\',0,'VD',1Dh,0Ch
+	db	'abc&6T',1Dh,0Ch,'AA!''˜P',3,'Â%`',1Eh,15h,'˙Û¸',87h
+	db	0,17h,18h,0,8Fh,9Fh,8Fh,1Fh,'ja',14h,7Fh,'˜Ú',0FFh,'œ'
+	db	18h,'A\_Ò',0FFh,0FFh,4,2,14h,8Fh,'qÒ',0FFh,0FFh,6,1
+	db	1Fh,'/ÙÛ',0FFh,0FFh,'|a',1Ch,'_ˆÚ',8Fh,'/',0Ch,2,'Q',1Fh
+	db	'ÒÚ',0FFh,0FFh,2,'BV&Ò',0FFh,0FFh,'Õ ',80h,4,'Õ ',80h
+	db	4,'Õ ',80h,'…',0Eh,9,6,'0>',0Fh,'Õÿ',80h,4,0Dh,' ˜√1'
+	db	81h,'!€',8Ah,':'
+T9200:	db	'7',0
+T9202:	db	'p',0
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T9204:	add	a,d
+	nop
+	sbc	a,l
+	nop
+	call	po,0F900h
+	nop
+	nop
+	ld	bc,11Ah
+	dec	de
+	ld	bc,11Ch
+	dec	e
+	ld	bc,12Bh
+	ld	(hl),1
+	ld	b,a
+	ld	bc,158h
+	ld	e,c
+	ld	bc,166h
+	ld	(hl),e
+	ld	bc,17Dh
+	and	l
+	ld	bc,1B8h
+	ld	hl,3202h
+	ld	(bc),a
+	ld	h,d
+	ld	(bc),a
+	sbc	a,d
+	ld	(bc),a
+	di
+	ld	(bc),a
+	ld	e,3
+	ld	sp,7003h
+	inc	bc
+	and	b
+	inc	bc
+	ret	nc
+	inc	bc
+	add	hl,bc
+	inc	b
+	add	hl,de
+	inc	b
+	ld	e,b
+	inc	b
+	ld	a,a
+	inc	b
+	sub	c
+	inc	b
+	and	l
+	inc	b
+	cp	(hl)
+	inc	b
+	out	(4),a		;Network ver 1.00
+	call	nc,0D504h
+	inc	b
+	jp	p,304h
+	dec	b
+	ld	a,(de)
+	dec	b
+	dec	hl
+	dec	b
+	dec	sp
+	dec	b
+	ld	c,b
+	dec	b
+	ld	l,e
+	dec	b
+	adc	a,b
+	dec	b
+	and	(hl)
+	dec	b
+	and	a
+	dec	b
+	rst	38h
+	dec	b
+	ld	l,c
+	ld	b,82h		;'Ç'
+	ld	b,97h		;'ó'
+	ld	b,0CFh		;'œ'
+	ld	b,10h
+	ccf
+	sbc	a,b
+	jr	z,.147		;[9298h]
+	ld	b,e
+	add	hl,hl
+	rla
+	ld	de,20Eh
+	call	m,S9F1F		;[9F1Fh]
+	ld	a,43h		;'C'
+	nop
+	nop
+	add	hl,de
+	sbc	a,b
+	ccf
+	rst	38h
+	rlca
+	add	hl,hl
+	inc	hl
+	call	m,2A1Fh
+	ld	de,1740h
+	ex	af,af'
+	jr	nc,.148		;[92A0h]
+	add	hl,hl
+	rla
+	rst	38h
+	ld	b,9Ah		;'ö'
+	ld	h,a
+.147:	ld	b,e
+	jr	nc,.149		;[930Dh]
+	nop
+	nop
+	ld	(W982D),hl	;[982Dh]
+.148:	ccf
+	ld	h,h
+	ld	c,2
+	ex	af,af'
+	ld	de,0E08h
+	rla
+	ld	c,11h
+	dec	e
+	ld	de,2317h
+	rla
+	dec	e
+	jr	nc,.150		;[92DAh]
+	ld	(bc),a
+	ld	h,1Dh
+	inc	hl
+	daa
+	ex	af,af'
+	ld	h,23h		;'#'
+	daa
+	ld	(bc),a
+	jr	nc,.151		;[9331h]
+	nop
+	ld	(W992C),hl	;[992Ch]
+	ld	a,63h		;'c'
+	ld	c,2
+	ex	af,af'
+	ld	de,0E08h
+	rla
+	ld	c,11h
+	dec	e
+	ld	de,2317h
+	rla
+	dec	e
+	jr	nc,.152		;[92FDh]
+	ld	(bc),a
+	ld	h,1Dh
+	inc	hl
+.150:	daa
+	ex	af,af'
+	ld	h,23h		;'#'
+	daa
+	ld	(bc),a
+	jr	nc,.153		;[9354h]
+	nop
+	nop
+	inc	de
+	ld	a,98h		;'ò'
+	dec	l
+	ex	af,af'
+	ld	h,17h
+	jr	nz,.154		;[931Dh]
+	rla
+	daa
+	ld	(bc),a
+	jr	nc,.155		;[9318h]
+	rla
+	daa
+	ex	af,af'
+	ld	h,17h
+	nop
+	nop
+	dec	b
+	ld	b,b
+	cp	a
+	add	hl,hl
+.152:	dec	b
+	nop
+	nop
+	ld	a,(bc)
+	dec	a
+	ld	a,h
+	cp	1
+	dec	l
+	sbc	a,l
+	dec	bc
+	inc	d
+	ld	a,(de)
+	nop
+	dec	c
+	dec	a
+.149:	ld	a,h
+	cp	1
+	inc	l
+	sbc	a,d
+	dec	h
+	sbc	a,l
+	jr	nz,.156		;[933Dh]
+	dec	b
+	dec	bc
+.155:	nop
+	nop
+	nop
+	nop
+	nop
+.154:	inc	c
+	ccf
+	dec	l
+	sbc	a,c
+	dec	e
+	dec	h
+	daa
+	ld	h,(hl)
+	ld	(bc),a
+	jr	nc,.157		;[9358h]
+	ld	(hl),d
+	nop
+	nop
+	add	hl,bc
+	dec	a
+	sbc	a,c
+	ld	l,d
+	dec	l
+	ld	(bc),a
+.151:	ld	h,1Ah
+	ld	(hl),d
+	nop
+	nop
+	rrca
+	dec	sp
+	sbc	a,b
+	ld	h,l
+	ld	b,e
+	ld	sp,T9972	;[9972h]
+.156	equ	$-1
+	ld	b,a
+	ld	b,(hl)
+	sbc	a,b
+	ld	l,d
+	ld	b,h
+	jr	nc,.158		;[93B7h]
+	nop
+	nop
+	rrca
+	inc	a
+	sbc	a,b
+	call	m,281Fh
+	ld	c,2
+	dec	h
+	dec	h
+	sbc	a,d
+	call	m,81Fh
+.153	equ	$-1
+	ld	c,0
+	nop
+.157:	nop
+	dec	bc
+	dec	a
+	sbc	a,b
+	cpl
+	ld	(bc),a
+	ex	af,af'
+	sbc	a,l
+	ld	l,78h		;'x'
+	add	a,l
+	ex	af,af'
+	nop
+	nop
+	dec	bc
+	ld	h,h
+	sbc	a,b
+	ld	a,0FCh		;'¸'
+	dec	d
+	ld	a,(0AF43h)
+	dec	h
+	ld	(hl),d
+	nop
+	nop
+	ex	af,af'
+	dec	l
+	dec	a
+	sbc	a,c
+	ld	l,h
+	inc	hl
+	jr	nc,.159		;[93EDh]
+	nop
+	nop
+	add	hl,de
+	sbc	a,(hl)
+	dec	h
+	and	e
+	ld	h,h
+	ld	a,2Ch		;','
+	rrca
+	or	c
+	ld	h,12h
+	dec	sp
+	daa
+	rrca
+	sbc	a,l
+	ld	(de),a
+	ld	(hl),d
+	ld	a,2Ch		;','
+	rrca
+	or	c
+	ld	h,12h
+	dec	sp
+	ld	(de),a
+	nop
+	inc	c
+	ld	h,l
+	and	e
+	ccf
+	inc	l
+	ld	c,0B1h
+	ld	h,11h
+	dec	sp
+	ld	de,72h
+	nop
+	ld	de,3E9Bh
+	rst	38h
+	nop
+	jr	z,.160		;[9412h]
+	ld	c,31h
+	ld	(hl),d
+	sbc	a,a
+	ld	h,a
+	jr	nc,.161		;[93C1h]
+	ld	(hl),d
+	rst	38h
+	ld	bc,0
+.158	equ	$-1
+	inc	(hl)
+	cp	1
+	ccf
+	sbc	a,c
+	inc	l
+	ld	c,3Ch
+	ld	c,27h
+.161	equ	$-1
+	ccf
+	ld	c,3Ch
+	ld	h,0Eh
+	daa
+	ccf
+	ld	c,3Ch
+	ld	c,3Dh
+	inc	l
+	ld	c,3Ah
+	ld	c,27h
+	dec	a
+	ld	c,3Ah
+	ld	h,0Eh
+	daa
+	dec	a
+	ld	c,3Ah
+	ld	c,3Ah
+	inc	l
+	ld	c,37h
+	ld	c,27h
+	ld	a,(370Eh)
+	ld	h,0Eh
+	daa
+	ld	a,(370Eh)
+	ld	c,0
+.159:	ld	(B993F),a	;[993Fh]
+	inc	l
+	inc	hl
+	inc	a
+	inc	hl
+	daa
+	ccf
+	dec	e
+	inc	a
+	ld	h,23h		;'#'
+	daa
+	ccf
+	inc	hl
+	inc	a
+	inc	hl
+	dec	a
+	inc	l
+	inc	hl
+	ld	a,(2723h)
+	dec	a
+	dec	e
+	ld	a,(2326h)
+	daa
+	dec	a
+	inc	hl
+	ld	a,(3A23h)
+	inc	l
+	inc	hl
+.160:	scf
+	inc	hl
+	daa
+	ld	a,(371Dh)
+	ld	h,23h		;'#'
+	daa
+	ld	a,(3723h)
+	inc	hl
+	nop
+	nop
+	rrca
+	sbc	a,b
+	ld	a,(4365h)
+	ld	sp,3E72h
+	sbc	a,c
+	ld	l,b
+	ld	c,d
+	ld	b,e
+	jr	nc,.162		;[945Fh]
+	ld	(hl),d
+	nop
+	nop
+	dec	de
+	ld	b,c
+	sbc	a,b
+	ld	h,h
+	jr	z,.163		;[943Ah]
+	ld	de,0E08h
+.163	equ	$-1
+	rla
+	ld	de,802h
+	ld	c,11h
+	rla
+	ld	(bc),a
+	ex	af,af'
+	ld	c,2
+	ld	de,817h
+	ld	c,30h
+	jr	nc,.164		;[94BFh]
+	nop
+	ld	(de),a
+	sbc	a,l
+	dec	a
+	call	m,S9815		;[9815h]
+	inc	a
+	ld	h,a
+	call	m,311Fh
+	ld	(hl),d
+.165:	sbc	a,(hl)
+	ld	h,a
+	jr	nc,.165		;[945Ah]
+	rra
+.162:	ld	(hl),d
+	nop
+	nop
+	rra
+	dec	hl
+	ccf
+	sbc	a,b
+	rla
+	ld	c,2
+	add	hl,hl
+	rla
+	ld	c,23h
+	dec	a
+	ld	de,4002h
+	jr	z,.166		;[947Bh]
+	ld	de,217h
+	ld	l,b
+	ld	c,8
+	rla
+	ld	de,202h
+.166	equ	$-2
+	ld	de,3017h
+	ld	(hl),d
+	nop
+	ld	d,3Fh		;'?'
+	sbc	a,b
+	call	m,2515h
+	dec	h
+	dec	h
+	dec	h
+	inc	a
+	call	m,3D1Fh
+	call	m,3E1Fh
+	sbc	a,h
+	ld	l,b
+	call	m,301Fh
+	ld	(hl),d
+	nop
+	nop
+	ld	d,a
+	rst	38h
+	rlca
+	sbc	a,b
+	ccf
+	ld	hl,(0FC02h)
+	rra
+	dec	b
+	call	m,215h
+	call	m,2E1Fh
+	rla
+	ex	af,af'
+	ld	c,0FCh
+	dec	d
+	ld	(bc),a
+	inc	l
+	ex	af,af'
+	ld	c,4Dh
+	ld	h,0Eh
+	ex	af,af'
+	ld	(bc),a
+	ld	h,17h
+	ld	de,1FFCh
+	ld	h,l
+	ld	hl,(802h)
+.164	equ	$-2
+	ld	de,260Eh
+	ex	af,af'
+	ld	c,2
+	ld	c,2Bh
+	ld	(bc),a
+	ld	hl,(0E02h)
+	ex	af,af'
+	add	hl,hl
+	ld	(bc),a
+	ex	af,af'
+	call	m,7215h
+	sbc	a,c
+	ld	hl,(802h)
+	ld	de,260Eh
+	ex	af,af'
+	ld	c,2
+	ld	c,2Bh
+	ld	(bc),a
+	add	hl,hl
+	ld	(bc),a
+	ld	c,11h
+	rla
+	dec	e
+	inc	hl
+	daa
+	ld	(bc),a
+	ex	af,af'
+	ld	h,(hl)
+	dec	bc
+	jr	nc,.167		;[9561h]
+	rst	38h
+	ld	b,0
+	nop
+	inc	d
+	ld	hl,(0FFh)
+	inc	a
+	sbc	a,c
+	dec	bc
+	ld	sp,310Bh
+	dec	bc
+	or	l
+	dec	bc
+	sbc	a,d
+	ld	h,a
+	jr	nc,.168		;[950Fh]
+	ld	(hl),d
+	rst	38h
+	ld	bc,1400h
+	ld	hl,(0FFh)
+	dec	sp
+	sbc	a,c
+	ex	af,af'
+.168:	ld	sp,3108h
+	ex	af,af'
+	or	l
+	ex	af,af'
+	sbc	a,d
+	ld	h,a
+	jr	nc,.169		;[9521h]
+	ld	(hl),d
+	rst	38h
+	ld	bc,0
+	ld	de,T983E	;[983Eh]
+.169:	ld	b,e
+	ld	b,a
+	ld	c,(hl)
+	ld	a,(6699h)
+.176:	ld	b,l
+	ld	sp,T9872	;[9872h]
+	ld	h,(hl)
+	ld	c,e
+	jr	nc,.170		;[95A1h]
+	nop
+	nop
+	ld	e,98h		;'ò'
+	ld	b,c
+	add	hl,hl
+	ld	(de),a
+	dec	h
+	dec	h
+	dec	h
+	inc	bc
+	dec	h
+	dec	h
+	dec	h
+	jr	.171		;[9564h]
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	dec	h
+	inc	h
+	dec	h
+	dec	h
+	jr	z,.172		;[956Ah]
+	ld	(de),a
+	dec	h
+	inc	bc
+	dec	h
+	dec	h
+	inc	bc
+	dec	h
+	inc	bc
+	dec	h
+	dec	h
+	nop
+	ld	e,98h		;'ò'
+	ld	b,c
+	add	hl,hl
+	ld	de,2525h
+.179:	dec	h
+	ld	(bc),a
+	dec	h
+	dec	h
+	dec	h
+	rla
+	dec	h
+	dec	h
+	inc	hl
+	dec	h
+.167:	dec	h
+	jr	z,.173		;[9589h]
+.171:	ld	de,225h
+	dec	h
+	dec	h
+	ld	(bc),a
+.172:	dec	h
+	ld	(bc),a
+	dec	h
+	dec	h
+	nop
+	nop
+	add	hl,de
+	dec	sp
+	sbc	a,b
+	jr	z,.174		;[95DBh]
+	ld	(bc),a
+	rla
+	ld	c,31h
+	ld	(hl),d
+	ld	h,l
+	ld	(bc),a
+	inc	hl
+	rla
+	ex	af,af'
+	ld	de,3E72h
+	add	hl,hl
+	ld	l,c
+	ld	de,223h
+	jr	nc,.175		;[95FBh]
+.173:	nop
+	inc	d
+	jr	c,.176		;[9527h]
+	ld	h,(hl)
+	call	m,311Fh
+	ld	(hl),d
+	sbc	a,h
+	ld	h,l
+	call	m,721Fh
+	ld	a,9Ah		;'ö'
+	ld	l,c
+	call	m,301Fh
+	ld	(hl),d
+	nop
+	nop
+	add	hl,de
+.170:	dec	sp
+	sbc	a,b
+	jr	z,.177		;[960Bh]
+	ld	(bc),a
+	rla
+	ld	c,31h
+	ld	(hl),d
+	ld	h,l
+	ld	(bc),a
+	inc	hl
+	rla
+	ex	af,af'
+	ld	de,3E72h
+	add	hl,hl
+	ld	l,c
+	ld	de,223h
+.182	equ	$-2
+	jr	nc,.178		;[962Bh]
+	nop
+	inc	d
+	jr	c,.179		;[9557h]
+	ld	h,(hl)
+	call	m,311Fh
+	ld	(hl),d
+	sbc	a,h
+	ld	h,l
+	call	m,721Fh
+	ld	a,9Ah		;'ö'
+	ld	l,c
+	call	m,301Fh
+	ld	(hl),d
+	nop
+	nop
+	dec	de
+	cpl
+	ccf
+	sbc	a,b
+	inc	hl
+.183:	rla
+	ld	c,2
+	ld	h,0FEh		;'˛'
+	ld	bc,1DA1h
+.174	equ	$-2
+	rst	38h
+	nop
+	sbc	a,c
+	ld	h,h
+	ld	a,(de)
+	rla
+	jr	nc,.180		;[95F9h]
+	ld	de,0E30h
+	dec	bc
+	ld	h,72h		;'r'
+	nop
+	dec	de
+	ld	l,3Eh		;'>'
+	sbc	a,b
+	inc	hl
+	rla
+	ld	c,2
+	ld	h,0FEh		;'˛'
+	ld	bc,1DA1h
+.180:	rst	38h
+	nop
+.175:	sbc	a,c
+	ld	h,h
+	ld	a,(de)
+	rla
+	jr	nc,.181		;[9615h]
+	ld	de,0E30h
+	dec	bc
+	ld	h,72h		;'r'
+	nop
+	nop
+	ld	c,3Fh
+.177:	dec	l
+	cp	1
+	xor	e
+	rst	38h
+	nop
+	inc	hl
+	ld	a,h
+	adc	a,d
+	inc	hl
+.181:	rst	38h
+	ld	bc,0
+	rra
+	jr	z,.182		;[95B5h]
+	dec	h
+	dec	h
+	ld	a,23h		;'#'
+	dec	e
+	rla
+	ld	de,80Eh
+	ld	de,2317h
+	daa
+	ld	(bc),a
+	ex	af,af'
+.178:	rla
+	ld	de,80Eh
+	ld	(bc),a
+	ld	h,23h		;'#'
+	dec	e
+	rla
+	ld	de,1D17h
+	inc	hl
+	nop
+	dec	e
+	jr	z,.183		;[95D5h]
+	ld	b,b
+	inc	hl
+	dec	e
+	rla
+	ld	de,80Eh
+	ld	de,2317h
+	daa
+	ld	(bc),a
+	ex	af,af'
+	rla
+	ld	de,80Eh
+	ld	(bc),a
+	ld	h,23h		;'#'
+	dec	e
+	rla
+	ld	de,1D17h
+	inc	hl
+	nop
+	nop
+	ld	(de),a
+	ld	l,0FEh		;'˛'
+	ld	bc,0A43Fh
+	or	2
+	rst	30h
+	db	09Eh
+	dw	2326h		;Far call to slot 2 (external)
+	jr	nz,.184		;[9696h]
+	dec	e
+	ld	a,(de)
+	jr	nc,.185		;[9681h]
+	nop
+	ld	(de),a
+	cpl
+	cp	1
+	ccf
+	and	h
+	or	2
+	rst	30h
+	db	09Eh
+	dw	2326h		;Far call to slot 2 (external)
+	jr	nz,.186		;[96A9h]
+	dec	e
+	ld	a,(de)
+	jr	nc,.187		;[9694h]
+	nop
+	nop
+	djnz	.188		;[96BFh]
+.185:	sbc	a,d
+	ld	c,h
+	ld	b,e
+	sbc	a,c
+	jr	nc,.189		;[96D7h]
+	ld	b,e
+	jr	nc,.190		;[96D6h]
+	jr	nc,.191		;[96CFh]
+	jr	nc,.192		;[96D9h]
+	ld	b,e
+	nop
+	nop
+	ld	(de),a
+	sbc	a,b
+	add	hl,sp
+.187:	ld	h,a
+	call	m,3115h
+.184	equ	$-2
+	ld	(hl),d
+	ld	a,0FCh		;'¸'
+	rra
+	sbc	a,c
+	inc	a
+	ld	h,a
+	ld	b,a
+	jr	nc,.193		;[96D2h]
+	ld	(hl),d
+	nop
+	nop
+	rla
+	add	hl,hl
+	sbc	a,c
+	ccf
+.186:	ld	c,40h
+	ex	af,af'
+	ld	b,c
+	ld	(bc),a
+	rla
+	ld	de,0E30h
+	ld	(bc),a
+	ex	af,af'
+	ld	c,23h
+	jr	nc,.191		;[96CFh]
+	ld	de,171Dh
+	ld	de,0
+	add	hl,bc
+.188:	ld	a,9Ah		;'ö'
+	ld	l,67h		;'g'
+	inc	d
+	jr	nc,.194		;[96F6h]
+	ld	(hl),d
+	nop
+	add	hl,bc
+	ccf
+	sbc	a,d
+	cpl
+	ld	h,a
+	rla
+	jr	nc,.195		;[9700h]
+.191	equ	$-1
+	ld	(hl),d
+	nop
+.193:	nop
+	nop
+	nop
+	dec	de
+.190:	ld	b,b
+.189:	sbc	a,b
+	ld	hl,(0FC17h)
+.192	equ	$-2
+.196:	rra
+	sbc	a,d
+	jr	nc,.196		;[96DBh]
+	rra
+	ld	a,(1FFCh)
+	call	m,311Fh
+	call	m,311Fh
+	call	m,671Fh
+.197	equ	$-2
+	jr	nc,.197		;[96EAh]
+	rra
+	ld	(hl),d
+	nop
+	nop
+	rrca
+	inc	a
+	sbc	a,d
+	call	m,3E1Fh
+.194	equ	$-2
+	call	m,S981F		;[981Fh]
+	ld	b,a
+	ld	b,l
+	ld	b,e
+	ld	b,e
+	ld	b,h
+.195:	ld	b,l
+	nop
+	nop
+	dec	d
+	sbc	a,c
+	ccf
+	call	m,S981F		;[981Fh]
+	add	hl,hl
+	rla
+	ld	(bc),a
+	ex	af,af'
+	ld	c,66h
+	jr	z,.198		;[9722h]
+	ld	c,11h
+	rla
+	ex	af,af'
+	ld	c,30h
+	ld	(hl),d
+	nop
+	nop
+	rrca
+	ld	l,b
+	sbc	a,b
+	ccf
+	call	m,291Fh
+	ld	(1628h),hl
+.198	equ	$-2
+	dec	c
+	ld	bc,2599h
+	ld	(hl),d
+	nop
+	nop
+	ld	c,98h
+	inc	a
+	call	m,3F15h
+	call	m,S9C1F		;[9C1Fh]
+	ld	h,a
+	ld	c,e
+	jr	nc,.199		;[9768h]
+	ld	(hl),d
+	nop
+	nop
+	dec	bc
+	ccf
+	sbc	a,b
+	ld	h,a
+	ld	l,23h		;'#'
+	cpl
+	rla
+	jr	nc,.200		;[9775h]
+	ld	(hl),d
+	nop
+	nop
+	rrca
+	ld	l,0FFh		;
+	nop
+	sbc	a,b
+	dec	(hl)
+	ld	l,h
+	ld	de,7231h
+	sbc	a,d
+	ld	l,h
+	ld	de,7230h
+	nop
+	ld	de,0FE2Fh
+	ld	bc,0FFh
+	sbc	a,b
+	dec	(hl)
+	ld	l,h
+	rla
+	ld	sp,T9A72	;[9A72h]
+	ld	l,h
+	rla
+	jr	nc,.201		;[97DBh]
+.199	equ	$-1
+	nop
+	nop
+	ld	c,2Fh
+	sbc	a,b
+	dec	h
+	dec	h
+	ld	a,66h		;'f'
+	dec	e
+	ld	de,2608h
+.200	equ	$-1
+	jr	nc,.202		;[97A8h]
+	ld	(hl),d
+	nop
+	inc	c
+	ld	l,98h		;'ò'
+	ld	a,66h		;'f'
+	dec	e
+	ld	de,2608h
+	jr	nc,.203		;[97B5h]
+	ld	(hl),d
+	nop
+	nop
+	dec	c
+	sbc	a,c
+	ccf
+	dec	h
+	add	hl,hl
+	sbc	a,b
+	inc	h
+	jr	z,.204		;[97A9h]
+	rrca
+	inc	bc
+	sbc	a,b
+	dec	h
+	nop
+	ld	c,99h
+	ccf
+	call	m,291Fh
+	sbc	a,b
+	ld	(1628h),hl
+	dec	c
+	ld	bc,2598h
+	nop
+	nop
+	nop
+	ld	c,e
+.202:	sbc	a,b
+.204:	ld	b,c
+	ld	l,e
+	add	hl,hl
+	rla
+	add	hl,hl
+	ld	(bc),a
+	add	hl,hl
+	ld	c,72h
+	ld	b,c
+	ld	l,e
+	add	hl,hl
+.203:	ld	de,2925h
+	ld	(bc),a
+	dec	h
+	add	hl,hl
+	ex	af,af'
+	dec	h
+	ld	(hl),d
+	ld	b,c
+	ld	l,e
+	add	hl,hl
+	ld	c,25h
+	dec	h
+	add	hl,hl
+	ld	(bc),a
+	dec	h
+	dec	h
+	add	hl,hl
+	ld	(bc),a
+	dec	h
+	dec	h
+	ld	(hl),d
+	ld	b,c
+	ld	l,e
+	add	hl,hl
+	ex	af,af'
+	dec	h
+	dec	h
+	dec	h
+	add	hl,hl
+	ld	(bc),a
+	dec	h
+	dec	h
+	dec	h
+	jr	z,.205		;[97FEh]
+.201:	dec	h
+	dec	h
+	dec	h
+	ld	(hl),d
+	ld	b,c
+	ld	h,d
+	add	hl,hl
+	ld	(bc),a
+	dec	h
+	dec	h
+	dec	h
+	dec	h
+	add	hl,hl
+	ld	(bc),a
+	dec	h
+	dec	h
+	jr	z,.206		;[980Ah]
+	dec	h
+	dec	h
+	dec	h
+	dec	h
+	ld	(hl),d
+	nop
+	ld	a,(bc)
+	sbc	a,b
+	add	hl,sp
+	ld	h,d
+	call	m,0FC1Fh
+	dec	d
+	ld	b,e
+	ld	(hl),d
+	nop
+.205:	nop
+	ld	d,d
+	sbc	a,b
+	ld	b,c
+	ld	h,e
+	add	hl,hl
+	ld	(bc),a
+	dec	h
+	dec	h
+	dec	h
+	dec	h
+	add	hl,hl
+.206:	ld	(bc),a
+	dec	h
+	dec	h
+	jr	z,.207		;[982Ch]
+	dec	h
+	dec	h
+	dec	h
+	dec	h
+	ld	(hl),d
+	ld	b,c
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S9815:	ld	h,(hl)
+	add	hl,hl
+	ex	af,af'
+	dec	h
+	dec	h
+	dec	h
+	add	hl,hl
+	ld	(bc),a
+	dec	h
+	dec	h
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S981F:	dec	h
+	jr	z,.208		;[9845h]
+	dec	h
+	dec	h
+	dec	h
+	ld	(hl),d
+	ld	b,c
+	ld	h,a
+	add	hl,hl
+	ld	c,25h
+	dec	h
+.207:	add	hl,hl
+W982D:	ld	(bc),a
+	dec	h
+	dec	h
+	add	hl,hl
+	ld	(bc),a
+	dec	h
+	dec	h
+	ld	(hl),d
+	ld	b,c
+	ld	h,a
+	add	hl,hl
+	ld	c,25h
+	add	hl,hl
+	ld	(bc),a
+	dec	h
+	dec	h
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T983E:	add	hl,hl
+	ld	(bc),a
+	dec	h
+	ld	(hl),d
+	ld	b,c
+	ld	l,b
+	ld	l,c
+.208:	add	hl,hl
+	ld	de,2925h
+	ld	(bc),a
+	dec	h
+	add	hl,hl
+	ex	af,af'
+	dec	h
+	ld	(hl),d
+	jr	nc,.209		;[98C3h]
+	nop
+	dec	d
+	sbc	a,b
+	add	hl,sp
+	ei
+	ld	d,b
+	call	m,0FC1Fh
+	dec	d
+	ld	b,e
+	ld	(hl),d
+	ld	l,c
+	ld	l,h
+	call	m,0FC1Fh
+	dec	d
+	ld	b,e
+	ld	(hl),d
+	jr	nc,.210		;[98D9h]
+	nop
+	nop
+	dec	bc
+	inc	a
+	db	0DDh		;Invalid op-code '›'
+	add	a,a
+	add	hl,hl
+	rst	38h
+	nop
+	ld	de,1762h
+T9872	equ	$-1
+	ld	(hl),d
+	nop
+	dec	bc
+	inc	a
+	db	0DDh		;Invalid op-code '›'
+	add	a,a
+	add	hl,hl
+	rst	38h
+	nop
+	ld	c,62h
+	inc	d
+	ld	(hl),d
+	nop
+	nop
+	add	hl,bc
+	inc	a
+	or	l
+	add	hl,hl
+	rla
+	jp	m,.211		;[85C8h]
+	rla
+	nop
+	add	hl,bc
+	inc	a
+	or	l
+	add	hl,hl
+	inc	d
+	jp	m,.211		;[85C8h]
+	inc	d
+	nop
+	nop
+	ld	(de),a
+	adc	a,b
+	jp	m,2DAAh
+	ld	a,8
+	sbc	a,d
+	cpl
+	ld	h,(hl)
+	dec	e
+	inc	hl
+	dec	e
+.214:	inc	hl
+	dec	e
+	inc	hl
+	jr	nc,.213		;[991Bh]
+	nop
+	inc	hl
+	xor	b
+	ld	a,0FFh		;
+	rlca
+	call	m,S881F		;[881Fh]
+	jp	m,2DAAh
+	ld	a,8
+	sbc	a,d
+	cpl
+	ld	h,d
+	dec	e
+	inc	hl
+	dec	e
+	inc	hl
+	dec	e
+	inc	hl
+	dec	e
+	inc	hl
+	dec	e
+.209:	inc	hl
+	dec	e
+	inc	hl
+	dec	e
+	inc	hl
+	dec	e
+	inc	hl
+	dec	e
+	inc	hl
+	ld	(hl),d
+	nop
+	nop
+	jr	nz,.214		;[98A4h]
+	dec	h
+	add	a,l
+	cpl
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	dec	a
+	inc	hl
+	dec	hl
+	sbc	a,c
+.210:	inc	d
+	ld	de,0B0Eh
+	ex	af,af'
+	dec	b
+	ld	(bc),a
+	ld	h,h
+	ld	h,23h		;'#'
+	jr	nz,.215		;[9902h]
+	ld	a,(de)
+	rla
+	inc	d
+	ld	de,0B0Eh
+	ex	af,af'
+	dec	b
+	ld	(bc),a
+	ld	(hl),d
+	nop
+	dec	hl
+	ld	a,0FFh		;
+	rlca
+	sbc	a,b
+	call	m,S9A1F		;[9A1Fh]
+	cpl
+	ld	l,e
+	dec	e
+	inc	hl
+	ld	(hl),d
+	inc	hl
+	dec	e
+	rla
+	cpl
+	sbc	a,c
+.215:	inc	d
+	ld	de,0B0Eh
+	ex	af,af'
+	dec	b
+	ld	(bc),a
+	ld	l,b
+	ld	h,23h		;'#'
+	jr	nz,.216		;[992Bh]
+	ld	a,(de)
+	jr	nc,.217		;[9928h]
+	inc	d
+	ld	de,0B0Eh
+	ex	af,af'
+	dec	b
+	ld	(bc),a
+	ld	(hl),d
+	rst	38h
+	ld	b,0
+.213	equ	$-1
+	nop
+	ld	a,(de)
+	dec	b
+	call	S80D8		;[80D8h]
+	ld	a,b
+	add	a,10h
+	ld	b,a
+	ld	a,(ix+7)
+.217	equ	$-1
+	add	a,a
+	or	(ix+6)
+.216	equ	$-2
+W992C	equ	$-1
+	or	10h
+	call	S80D8		;[80D8h]
+	set	4,(ix+0Bh)
+	jr	.218		;[9970h]
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	b,a
+	ld	a,(B8ADA)	;[8ADAh]
+	and	b
+	jr	nz,.218		;[9970h]
+;
+B993F:	db	78h		;'x'
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T9940:	and	3
+	add	a,a
+	jr	nz,.219		;[9947h]
+	ld	a,1
+.219:	ld	c,a
+	cpl
+	bit	0,(ix+0Ch)
+	jr	z,.220		;[9951h]
+	ld	c,0
+.220:	bit	7,(ix+6)
+	jr	z,.221		;[995Ch]
+	rlca
+	rlca
+	rlca
+	jr	.222		;[9962h]
+.221:	rlc	c
+	rlc	c
+	rlc	c
+.222:	ld	b,a
+	ld	a,(B8ADF)	;[8ADFh]
+	and	b
+	or	c
+	ld	(B8ADF),a	;[8ADFh]
+	ld	b,7
+	call	S80CA		;[80CAh]
+.218:	pop	bc
+	bit	7,(ix+17h)
+T9972	equ	$-3
+	ret	z
+	ld	a,(ix+1Eh)
+	or	a
+	jr	z,.223		;[9984h]
+	ld	(ix+1Ch),a
+	db	0DDh		;Invalid op-code '›'
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T9980:	rlca
+	nop
+	djnz	.223		;[9984h]
+.223:	ld	l,b
+	nop
+	adc	a,c
+	inc	bc
+	inc	d
+	inc	b
+	or	h
+	inc	b
+	ld	bc,1A06h
+	rlca
+	inc	c
+	nop
+	add	hl,bc
+	nop
+	and	c
+	ld	h,d
+	dec	h
+	ld	(hl),d
+	nop
+	djnz	.224		;[999Bh]
+.224:	and	c
+	ld	h,d
+	dec	h
+	ld	(hl),d
+	nop
+	rla
+	nop
+	and	c
+	ld	h,d
+	dec	h
+	ld	(hl),d
+	nop
+	ld	e,0
+	and	c
+	ld	h,d
+	dec	h
+	ld	(hl),d
+	nop
+	dec	h
+	nop
+	and	c
+	ld	h,d
+	dec	h
+	ld	(hl),d
+	nop
+	inc	l
+	nop
+	and	c
+	ld	h,d
+	dec	h
+	ld	(hl),d
+	nop
+	inc	sp
+	nop
+	and	c
+	ld	h,d
+	dec	h
+	ld	(hl),d
+	nop
+        ld      a,(_MAIN)       ;[0
+        h]
+	ld	h,d
+	dec	h
+	ld	(hl),d
+	nop
+	ld	b,c
+	nop
+	and	c
+	ld	h,d
+	dec	h
+	ld	(hl),d
+	nop
+	ld	c,b
+	nop
+	and	c
+	ld	h,d
+	dec	h
+	ld	(hl),d
+	nop
+	ld	c,a
+	nop
+	and	c
+	ld	h,d
+	dec	h
+	ld	(hl),d
+	nop
+	ld	d,(hl)
+	nop
+	and	c
+	ld	h,d
+	dec	h
+	ld	(hl),d
+	nop
+	nop
+	nop
+	inc	c
+	nop
+	dec	a
+	nop
+	dec	sp
+	add	hl,hl
+	out	(8),a		;MIDI card access
+	xor	e
+	dec	e
+	ld	h,d
+	dec	hl
+	add	hl,sp
+	cp	1
+	xor	e
+	inc	hl
+	cp	a
+	ld	c,27h
+	xor	e
+.225:	ld	c,26h
+	rst	20h
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+T9A00:	inc	hl
+	xor	e
+	dec	e
+	cp	a
+	ex	af,af'
+	daa
+	xor	e
+	ex	af,af'
+	ld	h,0E7h		;'Á'
+	dec	e
+	xor	e
+	rla
+	cp	a
+	ld	(bc),a
+	daa
+	xor	e
+	ld	(bc),a
+	ld	h,0E7h		;'Á'
+	ld	de,0BF0Eh
+	ld	c,9Ch
+	ld	a,(110Eh)
+	rla
+	dec	e
+	inc	hl
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S9A1F:	daa
+	ld	(bc),a
+	ex	af,af'
+	dec	bc
+	ld	(hl),d
+	nop
+	ld	a,c
+	nop
+	dec	sp
+	jr	z,.225		;[99FDh]
+	ex	af,af'
+	xor	e
+	dec	e
+	sbc	a,d
+	dec	h
+	ld	h,d
+	dec	hl
+.226:	jr	c,.226		;[9A31h]
+	ld	bc,23ABh
+	cp	a
+	ld	c,27h
+	xor	e
+	ld	c,26h
+	rst	20h
+	ld	c,0ABh
+	dec	e
+	cp	a
+	ex	af,af'
+	daa
+	xor	e
+	ex	af,af'
+	ld	h,0E7h		;'Á'
+	ex	af,af'
+	xor	e
+	rla
+	cp	a
+	ld	(bc),a
+	daa
+	xor	e
+	ld	(bc),a
+	ld	h,0E7h		;'Á'
+	ld	de,0BF0Eh
+	inc	hl
+	sbc	a,h
+	ld	c,11h
+	rla
+	dec	e
+	inc	hl
+	daa
+	ld	(bc),a
+	ex	af,af'
+	dec	bc
+	ld	(hl),d
+	nop
+	push	de
+	nop
+	dec	sp
+	ld	a,d
+	cp	a
+	ld	b,e
+	ld	h,d
+	and	c
+	add	hl,sp
+	ld	h,h
+	call	m,311Fh
+	ld	(hl),d
+	xor	e
+	ld	a,d
+	call	m,0C91Fh
+T9A72	equ	$-2
+	add	hl,sp
+	inc	l
+	ld	c,26h
+	and	c
+	inc	hl
+	daa
+	ld	(bc),a
+	ex	af,af'
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	c,0A1h
+	ld	de,0E9Ch
+	ex	af,af'
+	and	c
+	ld	(bc),a
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ex	af,af'
+	ld	h,0A1h		;'°'
+	dec	e
+	inc	hl
+	daa
+	ld	(bc),a
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ex	af,af'
+	and	c
+	ld	c,9Ch
+	ex	af,af'
+	ld	(bc),a
+	and	c
+	ld	h,23h		;'#'
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	daa
+	ld	(bc),a
+	ld	h,0A1h		;'°'
+	rla
+	dec	e
+	inc	hl
+	daa
+	ld	(bc),a
+	ld	h,23h		;'#'
+	daa
+	ex	af,af'
+	ld	(bc),a
+	xor	e
+	ld	h,23h		;'#'
+	and	c
+	dec	e
+	inc	hl
+	xor	e
+	inc	hl
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	c,9Ch
+	inc	h
+	jr	c,.227		;[9AD8h]
+	ld	a,(23ABh)
+	xor	e
+	inc	hl
+	daa
+	ld	(hl),d
+	nop
+	ld	b,d
+	ld	bc,439Ch
+	ccf
+	rst	38h
+	nop
+	dec	l
+	ex	af,af'
+	ld	c,11h
+	rla
+	ld	c,11h
+	rla
+	dec	e
+	ld	de,1D17h
+	inc	hl
+	rla
+	dec	e
+	inc	hl
+	daa
+	ex	af,af'
+	ld	h,d
+	ld	a,0ABh		;'´'
+.227	equ	$-1
+	ld	c,26h
+	or	l
+	dec	e
+	and	c
+	inc	hl
+	daa
+	ld	(bc),a
+	ex	af,af'
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	c,0A1h
+	ld	de,0E9Ch
+	ex	af,af'
+	and	c
+	ld	(bc),a
+	xor	e
+	ex	af,af'
+	ld	h,0B5h		;'µ'
+	rla
+	and	c
+	dec	e
+	inc	hl
+	daa
+	ld	(bc),a
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ex	af,af'
+	and	c
+	ld	c,9Ch
+	ex	af,af'
+	ld	(bc),a
+	and	c
+	ld	h,23h		;'#'
+	xor	e
+	daa
+	ld	(bc),a
+	ld	h,0B5h		;'µ'
+	ld	de,17A1h
+	dec	e
+	inc	hl
+	daa
+	ld	(bc),a
+	ld	h,23h		;'#'
+	daa
+	ex	af,af'
+	ld	(bc),a
+	xor	e
+	ld	h,23h		;'#'
+	and	c
+	dec	e
+	sbc	a,h
+	inc	hl
+	inc	a
+	inc	hl
+	ld	a,0ABh		;'´'
+	inc	hl
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	c,9Ch
+	inc	hl
+	inc	a
+	inc	hl
+	ld	a,0ABh		;'´'
+	inc	hl
+	daa
+	out	(0Eh),a		;Unknown port
+	ld	(hl),d
+	nop
+	or	b
+	ld	bc,0FE9Ch
+	ld	bc,3F43h
+	rst	38h
+	nop
+	inc	l
+	ex	af,af'
+	ld	c,11h
+	rla
+	ld	c,11h
+	rla
+	dec	e
+	ld	de,1D17h
+	inc	hl
+	rla
+	dec	e
+	inc	hl
+	daa
+	ex	af,af'
+	ld	h,d
+	xor	e
+	ld	c,26h
+	or	l
+	dec	e
+	and	c
+	inc	hl
+	daa
+	ld	(bc),a
+	ex	af,af'
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	c,0A1h
+	ld	de,0E9Ch
+	ex	af,af'
+	and	c
+	ld	(bc),a
+	xor	e
+	ex	af,af'
+	ld	h,0B5h		;'µ'
+	rla
+	and	c
+	dec	e
+	inc	hl
+	daa
+	ld	(bc),a
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ex	af,af'
+	and	c
+	ld	c,9Ch
+	ex	af,af'
+	ld	(bc),a
+	and	c
+	ld	h,23h		;'#'
+	xor	e
+	daa
+	ld	(bc),a
+	ld	h,0B5h		;'µ'
+	ld	de,17A1h
+	dec	e
+	inc	hl
+	daa
+	ld	(bc),a
+	ld	h,23h		;'#'
+	daa
+	ex	af,af'
+	ld	(bc),a
+	xor	e
+	ld	h,23h		;'#'
+	and	c
+	dec	e
+	sbc	a,h
+	inc	hl
+	dec	a
+	inc	hl
+	ccf
+	xor	e
+	inc	hl
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	c,9Ch
+	inc	hl
+	dec	a
+	inc	hl
+	ccf
+	xor	e
+	inc	hl
+	daa
+	out	(0Eh),a		;Unknown port
+	ld	(hl),d
+	nop
+	or	e
+	ld	bc,1700h
+	ld	(bc),a
+	sbc	a,l
+	dec	h
+	sbc	a,h
+	ld	b,e
+	ld	a,0FFh		;
+	nop
+	dec	l
+	add	hl,bc
+	rrca
+	ld	(de),a
+	jr	.228		;[9BB9h]
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	(de),a
+	jr	.229		;[9BCBh]
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	(de),a
+	jr	.230		;[9BCEh]
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	inc	h
+	jr	.231		;[9BD1h]
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	inc	h
+	daa
+	add	hl,bc
+	ld	h,d
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	c,26h
+.228	equ	$-1
+	and	c
+	inc	h
+	daa
+	inc	bc
+	add	hl,bc
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	rrca
+	and	c
+	ld	(de),a
+	sbc	a,h
+	rrca
+	add	hl,bc
+	and	c
+	inc	bc
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	add	hl,bc
+	ld	h,0A1h		;'°'
+.229	equ	$-1
+	ld	e,24h		;'$'
+.230:	daa
+	inc	bc
+	ret
+.231:	add	hl,bc
+	and	c
+	rrca
+	sbc	a,h
+	add	hl,bc
+	inc	bc
+	and	c
+	ld	h,24h		;'$'
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	daa
+	inc	bc
+	ld	h,0A1h		;'°'
+	jr	.232		;[9BFFh]
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	inc	h
+	daa
+	inc	bc
+	ld	h,24h		;'$'
+	daa
+	add	hl,bc
+	inc	bc
+	xor	e
+	ld	h,24h		;'$'
+	and	c
+	ld	e,24h		;'$'
+	xor	e
+	inc	h
+	ret
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	rrca
+	sbc	a,h
+	inc	h
+	dec	a
+	inc	h
+	ccf
+	xor	e
+	inc	h
+	out	(24h),a		;Unknown port
+	daa
+	ld	(hl),d
+	nop
+.232:	ld	(hl),l
+	ld	(bc),a
+	ccf
+	call	m,2A17h
+	out	(8),a		;MIDI card access
+	xor	e
+	dec	e
+	ld	h,d
+	sbc	a,h
+	ld	h,(hl)
+	ld	b,b
+	ld	de,113Dh
+	ccf
+	ld	de,113Bh
+	ld	a,11h
+	ld	a,(7211h)
+	ld	h,(hl)
+	ccf
+	ld	de,113Ch
+	ld	(hl),d
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S9C1F:	ld	h,(hl)
+	ld	b,b
+	ld	c,3Dh
+	ld	c,3Fh
+	ld	c,3Bh
+	ld	c,3Eh
+	ld	c,3Ah
+	ld	c,72h
+	ld	h,(hl)
+	ccf
+	ld	c,3Ch
+	ld	c,72h
+	ld	h,(hl)
+	ld	b,b
+	ex	af,af'
+	dec	a
+	ex	af,af'
+	ccf
+	ex	af,af'
+	dec	sp
+	ex	af,af'
+	ld	a,8
+	ld	a,(7208h)
+	ld	h,(hl)
+	ccf
+	ex	af,af'
+	inc	a
+	ex	af,af'
+	ld	(hl),d
+	ld	h,(hl)
+	ld	b,b
+	ld	c,3Dh
+	ld	c,3Fh
+	ld	c,3Bh
+	ld	c,3Eh
+	ld	c,3Ah
+	ld	c,72h
+	ld	h,(hl)
+	ccf
+	ld	c,3Ch
+	ld	c,72h
+	ld	(hl),d
+	nop
+	ld	a,b
+	ld	(bc),a
+	nop
+	rst	0		;Terminate program
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	ld	(bc),a
+	ld	hl,(419Bh)
+	ld	c,0Eh
+	ld	b,b
+	ld	c,3Fh
+	ld	c,3Eh
+	ld	c,3Dh
+	ld	c,0Eh
+	ld	c,0Eh
+	ld	a,0Eh
+	ld	c,0Eh
+.234:	ccf
+	ld	c,0Eh
+	ld	c,0Eh
+	ld	b,b
+	ld	c,0Eh
+	ld	b,c
+	ld	c,0Eh
+	ld	h,d
+	dec	hl
+	and	c
+	ld	b,b
+	ld	(bc),a
+	sbc	a,h
+	dec	a
+	ld	(bc),a
+	ld	(bc),a
+	ld	a,2
+	dec	h
+	sbc	a,d
+	ld	b,b
+	ld	(bc),a
+	ccf
+	ld	(bc),a
+	sbc	a,e
+	ld	a,2
+	and	c
+	ld	(bc),a
+	ccf
+	sbc	a,c
+	ld	(bc),a
+	sbc	a,a
+	ld	a,2
+	sbc	a,b
+	ccf
+	ld	(bc),a
+	ld	a,9Bh		;'õ'
+	ld	(bc),a
+	sbc	a,c
+	ld	(bc),a
+	ccf
+	sbc	a,d
+	ld	(bc),a
+	ld	b,b
+	sbc	a,h
+	ld	(bc),a
+	ccf
+	ld	(bc),a
+	ld	(hl),d
+	nop
+	jr	.233		;[9CB4h]
+.236	equ	$-1
+;::===============================::
+;||   No execution path to here   ||
+;::===============================::
+	rst	38h
+	inc	b
+	add	hl,hl
+.233:	sbc	a,e
+	ld	a,0Eh
+	ld	c,3Dh
+	ld	c,3Ch
+	ld	c,3Bh
+	ld	c,3Ah
+	ld	c,0Eh
+	ld	c,0Eh
+	dec	sp
+	ld	c,0Eh
+	ld	c,3Ch
+	ld	c,0Eh
+	ld	c,0Eh
+	dec	a
+	ld	c,0Eh
+	ld	a,0Eh
+	ld	c,62h
+	jr	z,.234		;[9C76h]
+	ld	a,2
+	sbc	a,h
+	dec	sp
+	ld	(bc),a
+	ld	(bc),a
+	inc	a
+	ld	(bc),a
+	dec	h
+	sbc	a,d
+	ld	a,2
+	dec	a
+	ld	(bc),a
+	sbc	a,e
+	inc	a
+	ld	(bc),a
+	and	c
+	ld	(bc),a
+	dec	a
+	sbc	a,c
+	ld	(bc),a
+	sbc	a,a
+	inc	a
+	ld	(bc),a
+	sbc	a,b
+	dec	a
+	ld	(bc),a
+	inc	a
+	sbc	a,e
+	ld	(bc),a
+	sbc	a,c
+	ld	(bc),a
+	dec	a
+	sbc	a,d
+	ld	(bc),a
+	ld	a,9Ch		;'ú'
+	ld	(bc),a
+	dec	a
+	ld	(bc),a
+	ld	(hl),d
+	nop
+	rra
+	inc	bc
+	rst	38h
+	dec	b
+	rst	38h
+	inc	b
+	nop
+	nop
+	nop
+	inc	c
+	nop
+	dec	b
+	nop
+	nop
+	ex	af,af'
+	nop
+	nop
+	jr	.235		;[9D13h]
+.235:	jr	c,.236		;[9CB0h]
+	ld	h,a
+	ld	b,e
+	ld	sp,3D72h
+	or	l
+	ld	h,a
+	ld	b,e
+	jr	nc,.237		;[9D91h]
+	ld	(3400h),a
+	nop
+	ld	b,(hl)
+	rst	38h
+	nop
+	sbc	a,c
+	add	hl,hl
+	ld	b,b
+	ld	de,6465h
+	ld	(bc),a
+	ex	af,af'
+	ld	c,11h
+	rla
+	ld	(bc),a
+	ex	af,af'
+	rla
+	ld	c,8
+	ld	c,2
+	ld	(hl),d
+	jr	nc,.238		;[9D3Dh]
+	ld	(5000h),a
+.238	equ	$-1
+	nop
+	ld	b,(hl)
+	rst	38h
+	nop
+	sbc	a,b
+	add	hl,hl
+	ld	b,b
+	ld	de,6665h
+	ld	(bc),a
+	ex	af,af'
+	ld	c,11h
+	rla
+	ld	(bc),a
+	ex	af,af'
+	rla
+	ld	c,8
+	ld	c,2
+	ld	(hl),d
+	jr	nc,.239		;[9DC9h]
+	ld	(7100h),a
+	nop
+	ld	b,(hl)
+	sbc	a,h
+	dec	h
+	rst	38h
+	nop
+	sbc	a,b
+	ld	a,11h
+	ld	h,l
+	ld	h,(hl)
+	ld	hl,(0E02h)
+	rla
+	inc	hl
+	ex	af,af'
+	add	hl,hl
+	ld	(bc),a
+	ex	af,af'
+	rla
+	ld	c,2Ah
+	ex	af,af'
+	ld	h,23h		;'#'
+	rla
+	ld	(hl),d
+	jr	nc,.240		;[9DEAh]
+	ld	(7400h),a
+	nop
+	nop
+	ld	(hl),a
+	nop
+	nop
+	ld	a,d
+	nop
+	nop
+	ld	a,l
+	nop
+	nop
+	add	a,d
+	nop
+	rst	38h
+	inc	b
+	nop
+	adc	a,c
+	nop
+	rst	38h
+	dec	b
+	rst	38h
+	inc	b
+.237:	nop
+	nop
+	nop
+	inc	c
+	nop
+	dec	b
+	nop
+	nop
+	ex	af,af'
+	nop
+	nop
+	dec	e
+	nop
+	sbc	a,l
+	dec	sp
+	call	m,S9815		;[9815h]
+	ld	a,(0FC67h)
+	rra
+	ld	sp,TA072	;[0A072h]
+.241	equ	$-1
+	ld	h,a
+	jr	nc,.241		;[9DA9h]
+	rra
+	ld	(hl),d
+	ld	(4F00h),a
+	nop
+	ccf
+	ld	b,(hl)
+	rst	38h
+	nop
+	sbc	a,c
+	ld	hl,(211h)
+	ld	c,11h
+	ex	af,af'
+	ld	c,41h
+	sbc	a,b
+	dec	hl
+	rla
+	ld	hl,(211h)
+	ex	af,af'
+	dec	hl
+	ld	(bc),a
+.239:	ld	de,2908h
+	rla
+	ld	(bc),a
+	ld	c,8
+	ld	h,l
+	ld	hl,(2311h)
+	ld	(bc),a
+	add	hl,hl
+	ex	af,af'
+	ld	hl,(2911h)
+	ld	(bc),a
+	ld	de,3023h
+	ld	(hl),d
+	rst	38h
+	ld	bc,32h
+	add	a,e
+	nop
+	sbc	a,c
+	dec	h
+	ccf
+	ld	b,(hl)
+	rst	38h
+.240:	nop
+	sbc	a,c
+	ld	hl,(211h)
+	ld	c,11h
+	ex	af,af'
+	ld	c,41h
+	sbc	a,b
+	dec	hl
+	rla
+	ld	hl,(211h)
+	ex	af,af'
+	dec	hl
+	ld	(bc),a
+	ld	de,2908h
+	rla
+	ld	(bc),a
+	ld	c,8
+	ld	h,l
+	ld	hl,(2311h)
+	ld	(bc),a
+	add	hl,hl
+	ex	af,af'
+	ld	hl,(2911h)
+	ld	(bc),a
+	ld	de,3023h
+	ld	(hl),d
+	rst	38h
+	ld	bc,32h
+	add	a,(hl)
+	nop
+	nop
+	adc	a,c
+	nop
+	nop
+	adc	a,h
+	nop
+	nop
+	adc	a,a
+	nop
+	nop
+	sub	d
+	nop
+	nop
+	sub	a
+	nop
+	rst	38h
+	inc	b
+	nop
+	sbc	a,(hl)
+	nop
+	rst	38h
+	dec	b
+	rst	38h
+	inc	b
+	nop
+	nop
+	nop
+	inc	c
+	nop
+	jr	nz,.242		;[9E38h]
+.242:	out	(25h),a		;Unknown port
+	ccf
+	ld	hl,(1198h)
+	rla
+	ld	(bc),a
+	ex	af,af'
+	ld	c,8
+	ld	c,28h
+	ld	de,217h
+	ld	c,2
+	ld	de,80Eh
+	ld	(bc),a
+	ld	de,817h
+	ld	c,32h
+	nop
+	inc	hl
+	nop
+	nop
+	ld	(0D300h),a
+	dec	h
+	ld	a,9Dh		;'ù'
+	ld	b,a
+	and	c
+	ld	l,b
+	call	m,301Fh
+	ld	(hl),d
+	ld	(0B000h),a
+	nop
+	ccf
+	ld	c,e
+	rst	38h
+	nop
+	sbc	a,c
+	ld	hl,(211h)
+	ld	c,11h
+	ex	af,af'
+	ld	c,41h
+	sbc	a,b
+	dec	hl
+	rla
+	ld	hl,(211h)
+	ex	af,af'
+	dec	hl
+	ld	(bc),a
+	ld	de,2908h
+	rla
+	ld	(bc),a
+	ld	c,8
+	ld	h,l
+	ld	hl,(2311h)
+	ld	(bc),a
+	add	hl,hl
+	ex	af,af'
+	ld	hl,(2911h)
+	ld	(bc),a
+	ld	de,3023h
+	ld	(hl),d
+	rst	38h
+	ld	bc,25A1h
+	ld	b,c
+	rst	38h
+	nop
+	ld	hl,(1198h)
+	rla
+	ld	(bc),a
+	ex	af,af'
+	ld	c,8
+	ld	c,28h
+	ld	de,217h
+	ld	c,2
+	ld	de,80Eh
+	ld	(bc),a
+	ld	de,817h
+	ld	c,0FFh
+	ld	bc,463Fh
+	rst	38h
+	nop
+	sbc	a,c
+	ld	hl,(211h)
+	ld	c,11h
+	ex	af,af'
+	ld	c,41h
+	sbc	a,b
+	dec	hl
+	rla
+	ld	hl,(211h)
+	ex	af,af'
+	dec	hl
+	ld	(bc),a
+	ld	de,2908h
+	rla
+	ld	(bc),a
+	ld	c,8
+	ld	h,l
+	ld	hl,(2311h)
+	ld	(bc),a
+	add	hl,hl
+	ex	af,af'
+	ld	hl,(2911h)
+	ld	(bc),a
+	ld	de,3023h
+	ld	(hl),d
+	rst	38h
+	ld	bc,32h
+	jr	nc,.243		;[9EE7h]
+	sbc	a,c
+.243:	dec	h
+	ccf
+	ld	b,(hl)
+	rst	38h
+	nop
+	sbc	a,c
+	ld	hl,(211h)
+	ld	c,11h
+	ex	af,af'
+	ld	c,41h
+	sbc	a,b
+	dec	hl
+	rla
+	ld	hl,(211h)
+	ex	af,af'
+	dec	hl
+	ld	(bc),a
+	ld	de,2908h
+	rla
+	ld	(bc),a
+	ld	c,8
+	ld	h,l
+	add	hl,hl
+	ld	de,223h
+	jr	z,.244		;[9F14h]
+	ld	hl,(2911h)
+	ld	(bc),a
+	ld	de,3023h
+	ld	(hl),d
+.244:	rst	38h
+	ld	bc,0FF41h
+	nop
+	ld	hl,(1198h)
+	rla
+	ld	(bc),a
+	ex	af,af'
+;::===============================::
+;||          SUBROUTINE           ||
+;::===============================::
+S9F1F:	ld	c,8
+	ld	c,28h
+	ld	de,217h
+	ld	c,2
+	ld	de,80Eh
+	ld	(bc),a
+	ld	de,817h
+	ld	c,0FFh
+	ld	bc,463Fh
+	rst	38h
+	nop
+	sbc	a,c
+	ld	hl,(211h)
+	ld	c,11h
+	ex	af,af'
+	ld	c,41h
+	sbc	a,b
+	dec	hl
+	rla
+	ld	hl,(211h)
+	ex	af,af'
+	dec	hl
+	ld	(bc),a
+	ld	de,2908h
+	rla
+	ld	(bc),a
+	ld	c,8
+	ld	h,l
+	ld	hl,(2311h)
+	ld	(bc),a
+	add	hl,hl
+	ex	af,af'
+	ld	hl,(2911h)
+	ld	(bc),a
+	ld	de,3023h
+	ld	(hl),d
+	rst	38h
+	ld	bc,25A1h
+	ld	(3300h),a
+	ld	bc,3600h
+	ld	bc,3900h
+	ld	bc,3C00h
+	ld	bc,3F00h
+	ld	bc,4400h
+	ld	bc,4FFh
+	nop
+	ld	c,e
+	ld	bc,5FFh
+	rst	38h
+	inc	b
+	nop
+	nop
+	nop
+	inc	c
+	nop
+	inc	hl
+	nop
+	sbc	a,b
+	ccf
+	ld	hl,(0E17h)
+	ld	de,802h
+	add	hl,hl
+	ld	de,0E17h
+	ex	af,af'
+	ld	(bc),a
+	ex	af,af'
+	ld	(bc),a
+	ld	c,28h
+	ld	(bc),a
+	ld	(bc),a
+	ex	af,af'
+	ld	c,11h
+	rla
+	ld	(bc),a
+	ex	af,af'
+	ld	c,11h
+	rla
+	ld	(4800h),a
+	nop
+	sbc	a,b
+	dec	h
+	dec	h
+	dec	h
+	dec	h
+	ccf
+	ld	hl,(0E17h)
+	ld	de,802h
+	add	hl,hl
+	ld	de,0E17h
+	ex	af,af'
+	ld	(bc),a
+	ex	af,af'
+	ld	(bc),a
+	ld	c,28h
+	ld	(bc),a
+	ld	(bc),a
+	ex	af,af'
+	ld	c,11h
+	rla
+	ld	(bc),a
+	ex	af,af'
+	ld	c,11h
+	rla
+	ld	(5800h),a
+	nop
+	ld	a,98h		;'ò'
+	ld	b,e
+	ld	b,l
+	ld	b,a
+	ld	c,d
+	and	c
+	ld	l,d
+	call	m,301Fh
+	ld	(hl),d
+	ld	(B8100),a	;[8100h]
+	nop
+	call	m,4117h
+	sbc	a,b
+	rst	38h
+	nop
+	ld	h,l
+	ld	hl,(211h)
+	ex	af,af'
+	ld	c,29h
+	ld	de,217h
+	ex	af,af'
+	ld	c,2
+	ld	de,817h
+	ld	c,28h
+	rla
+	ex	af,af'
+	inc	hl
+	ex	af,af'
+	rla
+	ld	c,2
+	ld	(bc),a
+	jr	nc,.245		;[0A02Dh]
+	ld	(hl),d
+	rst	38h
+	ld	bc,32h
+	xor	(hl)
+	nop
+	call	m,4117h
+	sbc	a,b
+	dec	h
+	dec	h
+	dec	h
+	dec	h
+	rst	38h
+	nop
+	ld	h,l
+	ld	hl,(211h)
+	ex	af,af'
+	ld	c,29h
+	ld	de,217h
+	ex	af,af'
+	ld	c,2
+	ld	de,817h
+	ld	c,28h
+	rla
+	ex	af,af'
+	inc	hl
+	ex	af,af'
+	rla
+	ld	c,2
+	ld	(bc),a
+	jr	nc,.246		;[0A05Ah]
+	ld	(hl),d
+	rst	38h
+	ld	bc,32h
+.245	equ	$-2
+	jp	c,4600h
+	ld	b,c
+	sbc	a,b
+	dec	h
+	dec	h
+	dec	h
+	dec	h
+	rst	38h
+	nop
+	ld	h,l
+	ld	hl,(211h)
+	ex	af,af'
+	ld	c,29h
+	ld	de,217h
+	ex	af,af'
+	ld	c,2
+	ld	de,817h
+	ld	c,28h
+	rla
+	ex	af,af'
+	inc	hl
+	ex	af,af'
+	rla
+	ld	c,2
+	ld	(bc),a
+	jr	nc,.248		;[0A086h]
+	ld	(hl),d
+	rst	38h
+	ld	bc,32h
+.246	equ	$-1
+	ld	(bc),a
+	ld	bc,4146h
+	sbc	a,b
+	rst	38h
+	nop
+	ld	h,l
+	ld	hl,(211h)
+	ex	af,af'
+	ld	c,29h
+	ld	de,217h
+	ex	af,af'
+	ld	c,2
+	ld	de,817h
+;::===============================::
+;||      Indexed entry point      ||
+;::===============================::
+TA072:	ld	c,28h
+	rla
+	ex	af,af'
+	inc	hl
+	ex	af,af'
+	rla
+	ld	c,2
+	ld	(bc),a
+	jr	nc,.249		;[0A0AEh]
+	ld	(hl),d
+	rst	38h
+	ld	bc,32h
+	dec	b
+	ld	bc,800h
+.248	equ	$-1
+	ld	bc,0B00h
+	ld	bc,1000h
+	ld	bc,4FFh
+	nop
+	rla
+	ld	bc,5FFh
+	rst	38h
+	inc	b
+	nop
+	nop
+	nop
+	inc	c
+	nop
+	ld	c,0
+	ld	l,0FEh		;'˛'
+	inc	b
+	ccf
+	ld	a,d
+	jp	m,17C8h
+	ld	(1A00h),a
+	nop
+	ld	l,0FEh		;'˛'
+	inc	b
+	ld	a,7Ah		;'z'
+.249	equ	$-1
+	jp	m,1DC8h
+	ld	(2500h),a
+	nop
+	ld	a,0FEh		;'˛'
+	ld	bc,0C8FAh
+	ld	a,d
+	ld	b,e
+	ld	(3100h),a
+	nop
+	ld	c,(hl)
+	cpl
+	cp	4
+	jp	m,3FC8h
+	rla
+	ld	(3D00h),a
+	nop
+	ld	c,(hl)
+	cpl
+	cp	4
+	jp	m,3FC8h
+	ld	a,(de)
+	ld	(4A00h),a
+	nop
+	call	m,2F14h
+	cp	4
+	jp	m,3FC8h
+	ld	de,32h
+	ld	c,l
+	nop
+	nop
+	ld	d,b
+	nop
+	nop
+	ld	d,e
+	nop
+	nop
+	ld	d,(hl)
+	nop
+	nop
+	ld	e,e
+	nop
+	rst	38h
+	inc	b
+	nop
+	ld	h,d
+	nop
+	rst	38h
+	dec	b
+	rst	38h
+	inc	b
+	nop
+	nop
+	nop
+	ld	a,(de)
+	db	0DDh		;Invalid op-code '›'
+
+
+

@@ -1,0 +1,134 @@
+Formato de Fichero
+--------------------
+
+Los ficheros pueden empezar con una cabecera bload o no, el driver 
+esta preparado para ello. Saltando la posible cabecera bload las caanciones 
+tienen dos bytes con los valores 0C 00 y a continuacion comienza la lista de
+canales. Cada canal tiene la siguiente estructura:
+
+- 2 bytes indicando la direccion de comienzo relativa del proximo canal. Si 
+    este valor es 0 indica que no hay mas canales.
+- Una secuencia de bytes con los los opcodes que definen la cancion.
+
+
+Los opcodes realizan una determinada funcion dependiendo del lugar que
+ocupen en la tabla, ya que los codigos se agrupan funcionalmente por 
+intervalos. Cada intervalo define una funcion y el resultado de restarle 
+al opcode el valor inicial de definicion del intervalo es tomado como
+parametro por la funcion. 
+
+El proceso de decodificacion comienza leyendo un opcode, ejecutando 
+la accion correspondiente y vuelta al principio. Este bucle continuara
+asi hasta que se encuentre un comando cuya ejecucion implique el final
+del proceso de descodificacion. El canal se quedara sin codificar
+hasta que se acabe el tiempo asignado previamente para ello, en cuyo
+caso comenzara de nuevo con el bucle de descodificacion. El maximo 
+numero de bucles anidados es 6
+
+En la tabla se muestran los parametros entre parentesis y aquellos comandos
+que impliquen fin de decodificacion estan marcados mediante un *.
+
+
+		 
+-------------------------------------------------------------------------------
+Opcode	|	 PSG			   |		FM		      |
+-------------------------------------------------------------------------------
+0     	|Parar canal.*				   		              |
+-------------------------------------------------------------------------------
+1-24  	|Tocar instrumento (nota).*	   				      |(4)
+-------------------------------------------------------------------------------
+25      |Silencio. *							      |
+-------------------------------------------------------------------------------
+26      |Decrementar octava						      |
+-------------------------------------------------------------------------------
+27      |Incrementar octava						      |
+-------------------------------------------------------------------------------
+28-2f	|Poner octava (octava)				   		      |
+-------------------------------------------------------------------------------
+30      |Decrementar volumen					              | 
+-------------------------------------------------------------------------------
+31      |Incrementar volumen						      |
+-------------------------------------------------------------------------------
+32-41	|Poner volumen (volumen)					      |
+-------------------------------------------------------------------------------
+42-61	|Tocar bateria (frecuencia).*	   |Poner instrumento de chip FM      |
+	|				   |(instrumento)		      |
+-------------------------------------------------------------------------------
+62-71   |Inicio de bucle (numero de iteraciones). Si el numero de iteraciones |
+	|es 0 es un bucle infinito					      |
+-------------------------------------------------------------------------------
+72      |Fin de bucle							      |
+-------------------------------------------------------------------------------
+73-82   |Poner Modulacion software de la amplitud (Tipo de modulacion)        |(3)
+-------------------------------------------------------------------------------
+83-92   |Poner Vibrato (Tipo de vibrato)				      |(1) 
+-------------------------------------------------------------------------------
+93-96   |Son equivalentes al codigo fa					      |
+-------------------------------------------------------------------------------
+97-f1   |Duracion de la nota (duracion)					      |
+-------------------------------------------------------------------------------
+f2-f9   |Poner divisor de duracion para el parametro mantenimiento de la      |
+        |envolvente del canal (divisor)				              |
+-------------------------------------------------------------------------------
+fa	|Duracion de la nota. Recoge la duracion del siguiente opcode.        |
+-------------------------------------------------------------------------------
+fb      |Inicio de bucle. Recoge el numero de iteraciones del siguiente opcode|
+-------------------------------------------------------------------------------
+fc	|Tocar bateria. Toma frecuencia    |Instrumento FM Toma parametro del |
+	|del siguiente opcode.* 	   |siguiente opcode.                 |
+-------------------------------------------------------------------------------
+fd      |Escribir en un registro del FM. Toma los dos siguientes bytes como   |
+        |parametros. El primero es el numero de registro y el segundo el valor|
+-------------------------------------------------------------------------------
+fe      |Poner Modulacion de frecuencia ((tambien toca el volumen)). Toma el  |(1)
+	|parametro del siguiente opcode				              | 
+------------------------------------------------------------------------------|
+ff	|Modificar parametro del driver				              |
+	|	 0 -> Desactiva envolvente software del instrumento	      |
+	|	 1 -> Activa envolvente software del instrumento	      |
+	|	 2 -> Desactiva el modo Sustain del canal                (FM) |
+	|	 3 -> Activa el modo Sustain del canal                   (FM) |
+	|	 4 -> Coloca F-Number (definicion octava) igual a 17     (FM) |(1)
+	|	 5 -> Coloca F-Number (definicion octava) igual a 18     (FM) |(1)
+	|	 6 -> Activa en el canal el canal de ruido 	         (PSG)|(1)
+	|	 7 -> Activa en el canal el Generador de tonos	         (PSG)|(1)
+	|	 8 -> Coloca en control de decodificacion el valor del        |(2)
+	|             siguiente opcode	                                      |
+	|	 9 -> Coloca en el temporizador del control de amplitud       |(1)
+	|             software el valor del siguiente opcode                  |							      
+	|	 a -> Activa el modo ritmico                             (FM) |
+	|	 b -> Activa el modo melodico		                 (FM) |
+-------------------------------------------------------------------------------	
+
+
+
+(1) Descripcion muy especulativa. Esperar a obtener mayor conocimiento del driver.
+
+
+(2) Si el valor del control de decodificacion es mayor que 4b indica el numero 
+    de iteraciones de decodificacion de los canales en cada llamada a la 
+    rutina de playear.
+    Si se pone un valor menor que 4b el resultado depende del estado actual
+    del codificador, por lo que no se recomienda usar (por lo menos hasta 
+    que tenga un mayor conocimiento del driver).
+
+(3) Si se coloca este comando se producira una breve parada en el sonido, es 
+    decir se percibiran como dos notas diferentes, y en caso contrario 
+    como una sola. (Esto es util para producir baterias de calidad, en las 
+    que se concatenan dos de diferente frecuencia. Si no se coloca de nuevo 
+    el tipo de modulacion sonara como un solo golpe, mientras que si se pone 
+    sonara como dos). ¿?
+
+(4) Los valores de este comando corresponden a cuartos de tono.
+
+
+
+
+Muchos de los parametros cambiados mediante la funcion ff no tomaran efecto 
+hasta la proxima decodificacion, por lo que es recomendable activarlos mediante 
+un silencio antes de intentar usar las nuevas caracteristicas obtenidas con el 
+parametro. Tambien hay que añadir que es posible que el cambio de algunos de 
+estos instrumentos no tenga ningun tipo de efecto sobre el driver, ya que 
+algunos de ellos afectan a variables que han debido ser activadas 
+previamente.
+
