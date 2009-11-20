@@ -265,7 +265,6 @@ int syntaxan (int token,symbol * sym)
           *sym = syms1;
           return 0;
 
-
         case PAR:
           status = 9;
           initsym(syms1, token, token);
@@ -571,8 +570,6 @@ int syntaxan (int token,symbol * sym)
         }
 
 
-      /*Expresion de comandos de 1 sola expresion*/
-
     case 16:
       switch(token)
         {
@@ -584,6 +581,7 @@ int syntaxan (int token,symbol * sym)
           status = STATUS_BEGIN_CHN_BODY; {pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);}  return 1;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
+
     case 17:
       switch(token)
         {
@@ -630,12 +628,16 @@ int syntaxan (int token,symbol * sym)
       switch(token)
         {
         case NUMBER:
-          status = 18;{pushexp(NUMBER, atoi(lexcad));}return 0;
+          status = 18;
+          pushexp(NUMBER, atoi(lexcad));
+          return 0;
+
         case IDEN:
-          status = 18; {symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);} return 0;
-        case PARI:
+          status = 18;
+          (ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0); return 0;
+        case PARI:              /* left parenthesis  */
           status = 19; {pushexp(token, 0);} return 0;
-        case PARD:
+        case PARD:              /* right parenthesis */
           status = 18; {pushexp(token, 0);} return 0;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
@@ -750,12 +752,7 @@ int syntaxan (int token,symbol * sym)
         }
 
 
-
-
-
-      /*Expresion de asignacion inicial*/
-
-
+      /* initial assign expression*/
     case 26:
       switch(token)
         {
