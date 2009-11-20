@@ -87,7 +87,7 @@ int syntaxan (int token,symbol * sym)
   switch (status)
     {
     case STATUS_INIT:     /* Initial status */
-      recst = 0;              /*Save actual state for error handling  */
+      recst = STATUS_INIT;    /*Save actual state for error handling  */
       switch (token)
         {
         case VAR:            /* Begin variable declaration */
@@ -100,7 +100,7 @@ int syntaxan (int token,symbol * sym)
 
         case IDEN:            /* Begin assign statement */
           status = STATUS_BEGIN_GLOBAL_ASGN;
-          if ((*sym = searchsym(lexcad)) == 0)
+          if ((*sym = searchsym(lexcad)) == NULL)
             rerror(ESYNTAX, EIDEN_NAME, 0);
           return 0;
 
@@ -456,8 +456,8 @@ int syntaxan (int token,symbol * sym)
         {
         case EQ:
           status = STATUS_BEGIN_EXP_2CMD;
-          {initexpr();
-          } return 0;
+          initexpr();
+          return 0;
 
         default: rerror(ESYNTAX, E_ASIG, 0);
 
@@ -468,29 +468,22 @@ int syntaxan (int token,symbol * sym)
         {
         case NUMBER:
           status = 31;
-          {initsym(syms2, NUMBER, 0);
-            ssymsig(syms2,*sym);
-            *sym = syms2;
-            pushexp(NUMBER, atoi(lexcad));
-          }   return 0;
+          initsym(syms2, NUMBER, 0);
+          ssymsig(syms2,*sym);
+          *sym = syms2;
+          pushexp(NUMBER, atoi(lexcad));
+          return 0;
 
         case IDEN:
           status = 31;
+          if(!(ptr = searchsym(lexcad)))
+            rerror(ESYNTAX, EIDEN_NAME, 0);
 
-          {symbol ptr;
-
-            if(!(ptr = searchsym(lexcad)))
-              rerror(ESYNTAX, EIDEN_NAME, 0);
-
-            initsym(syms2, NUMBER, 0);
-
-            ssymsig(syms2,*sym);
-
-            *sym = syms2;
-
-            pushexp(NUMBER, gsymval(ptr));
-
-          } return 0;
+          initsym(syms2, NUMBER, 0);
+          ssymsig(syms2,*sym);
+          *sym = syms2;
+          pushexp(NUMBER, gsymval(ptr));
+          return 0;
 
         case PARI:
           status = 31;
@@ -500,28 +493,22 @@ int syntaxan (int token,symbol * sym)
           };
           return 0;
 
-        default: rerror(ESYNTAX, E_EXP, 0);
-
+        default:
+          rerror(ESYNTAX, E_EXP, 0);
         }
 
       /* Begin end of channel statement */
-    case STATUS_BEGIN_ENDC:   /* ENDC ;
-                                 endc command */
+    case STATUS_BEGIN_ENDC:   /* ENDC ; endc command */
       switch(token)
         {
         case LN:
           status = 13;
-
           inscode(gsymval(*sym));
-
           execute();
-
           return 1;
-
 
         default:
           rerror(ESYNTAX, E_BAD_COMM, 0);
-
         }
 
 
@@ -538,10 +525,11 @@ int syntaxan (int token,symbol * sym)
           status = STATUS_BEGIN_CHN_DECL;
           return 0;
 
-        case LN: return 1;
+        case LN:
+          return 1;
 
-        default: rerror(ESYNTAX, E_INI, 0);
-
+        default:
+          rerror(ESYNTAX, E_INI, 0);
         }
 
 
@@ -551,8 +539,8 @@ int syntaxan (int token,symbol * sym)
         {
         case EQ:
           status = 15;
-          {initexpr();
-          }return 0;
+          initexpr();
+          return 0;
 
         default: rerror(ESYNTAX, E_ASIG, 0);
         }
