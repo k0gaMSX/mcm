@@ -70,6 +70,7 @@ enum
     STATUS_NAME_VAR_DECL,
     STATUS_BEGIN_CHN_DECL,
     STATUS_END_OF_CHANNEL,
+    STATUS_BEGIN_CHN_BODY,
 
     STATUS_BEGIN_GLOBAL_ASGN = 100 /* TODO: Update this */
   };
@@ -184,7 +185,7 @@ int syntaxan (int token,symbol * sym)
       case STATUS_END_OF_CHANNEL:
         switch (token)
           {
-          case LN : status = 5; {inscode2(CHANNEL, gsymval(*sym));}return 1;
+          case LN : status = STATUS_BEGIN_CHN_BODY; {inscode2(CHANNEL, gsymval(*sym));}return 1;
           default: rerror(ESYNTAX, E_CHANNEL, 0);
           }
 
@@ -225,7 +226,7 @@ int syntaxan (int token,symbol * sym)
       case 6:
         switch (token)
           {
-          case LN: status = 5;{inscodeI(*sym, NULL, val);}return 1;
+          case LN: status = STATUS_BEGIN_CHN_BODY;{inscodeI(*sym, NULL, val);}return 1;
           default: rerror(ESYNTAX, E_BAD_COMM, 0);
           }
       case 7:
@@ -346,7 +347,7 @@ int syntaxan (int token,symbol * sym)
           case SUB :status = 20;{pushexp(token, 0);} return 0;
           case MUL :status = 20;{pushexp(token, 0);} return 0;
           case DIV :status = 20;{pushexp(token, 0);} return 0;
-          case LN : status = 5; {pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);}  return 1;
+          case LN : status = STATUS_BEGIN_CHN_BODY; {pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);}  return 1;
           default: rerror(ESYNTAX, E_EXP, 0);
           }
       case 17 :
@@ -366,7 +367,7 @@ int syntaxan (int token,symbol * sym)
           case SUB : status = 19; {pushexp(token, 0);} return 0;
           case MUL : status = 19; {pushexp(token, 0);}return 0;
           case DIV : status = 17; {pushexp(token, 0);}  return 0;
-          case LN : status = 5;   {pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);}return 1;
+          case LN : status = STATUS_BEGIN_CHN_BODY;   {pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);}return 1;
           default: rerror(ESYNTAX, E_EXP, 0);
           }
 
@@ -532,7 +533,7 @@ int syntaxan (int token,symbol * sym)
           case SOS : status = 36;return 0;
           case BEMOL : status = 36;return 0;
           case COMA : status = 32;{pushexp(LN, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);initexpr();} return 0;
-          case LN : status = 5;{pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);} return 1;
+          case LN : status = STATUS_BEGIN_CHN_BODY;{pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);} return 1;
           default: rerror(ESYNTAX, E_EXP, 0);
           }
       case 32 :
@@ -555,7 +556,7 @@ int syntaxan (int token,symbol * sym)
           case SOS : status = 36;{pushexp(token, 0);ssymval(*sym, evalexpr());}return 0;
           case BEMOL : status = 35;{pushexp(token, 0);ssymval(*sym, evalexpr());}return 0;
           case COMA : status = 32;{pushexp(LN, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);initexpr();} return 0;
-          case LN : status = 5;{pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);}return 1;
+          case LN : status = STATUS_BEGIN_CHN_BODY;{pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);}return 1;
           default: rerror(ESYNTAX, E_EXP, 0);
           }
       case 34 :
@@ -571,7 +572,7 @@ int syntaxan (int token,symbol * sym)
         switch(token)
           {
           case BEMOL: status = 35;{ssymval(*sym,((SIGNED char)gsymval(*sym))-3);}return 0;
-          case LN : status = 5;
+          case LN : status = STATUS_BEGIN_CHN_BODY;
             {SIGNED char val;
             val = gsymval(*sym);
             val-=3;
@@ -586,7 +587,7 @@ int syntaxan (int token,symbol * sym)
         switch(token)
           {
           case SOS: status = 36;{ssymval(*sym, gsymval(*sym)+3);}return 0;
-          case LN : status = 5;{ssymval(*sym,(gsymval(*sym)+3)%34);inscodeI(*sym, NULL, val);}return 1;
+          case LN : status = STATUS_BEGIN_CHN_BODY;{ssymval(*sym,(gsymval(*sym)+3)%34);inscodeI(*sym, NULL, val);}return 1;
           case COMA : status = 32;{pushexp(LN, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);initexpr();} return 0;
           default: rerror(ESYNTAX, E_SOS, 0);
           }
@@ -629,7 +630,7 @@ int syntaxan (int token,symbol * sym)
           case MUL : status = 39;{pushexp(token, 0);}return 0;
           case DIV : status = 39;{pushexp(token, 0);}return 0;
           case POINT : status = 43;{pointp = point=32;};return 0;
-          case LN : status = 5;
+          case LN : status = STATUS_BEGIN_CHN_BODY;
             {
             float time;
 
@@ -668,7 +669,7 @@ int syntaxan (int token,symbol * sym)
           case MUL : status = 41;{pushexp(token, 0);}return 0;
           case DIV : status = 41;{pushexp(token, 0);}return 0;
           case POINT : status = 43;{pointp = point=32;} return 0;
-          case LN : status = 5;
+          case LN : status = STATUS_BEGIN_CHN_BODY;
             {
             float time, timei;
 
@@ -693,7 +694,7 @@ int syntaxan (int token,symbol * sym)
         switch(token)
           {
           case POINT: {pointp>>=1;point+=pointp;};return 0;
-          case LN: status = 5;
+          case LN: status = STATUS_BEGIN_CHN_BODY;
             {
             float time, timei;
 
