@@ -73,7 +73,8 @@ enum
     STATUS_BEGIN_CHN_BODY,
 
     STATUS_BEGIN_GLOBAL_ASGN = 100,
-    STATUS_BEGIN_ENDC
+    STATUS_BEGIN_ENDC,
+    STATUS_END_OF_1CMD
   };
 
 int syntaxan (int token,symbol * sym)
@@ -209,86 +210,45 @@ int syntaxan (int token,symbol * sym)
           *sym = syms1;
           return 0;
 
-        case PLAY:  status = 11; /* play statement */
+        case PLAY:
+          status = 11;          /* play statement */
           initexpr();
           initsym(syms1, token, token);
           *sym = syms1;
           return 0;
 
-        case SIL:   status = 6;
+        case SIL:               /* silence statement  */
+        case DECOC:             /* dec octave statement */
+        case INCOC:             /* inc octave statement */
+        case ENDL:              /* end of loop statement */
+        case DECV:              /* dec volume */
+        case INCV:              /* inc volume */
+          status = STATUS_END_OF_1CMD;
           initsym(syms1, token, token);
           *sym = syms1;
           return 0;
 
-        case DECOC: status = 6;
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case INCOC: status = 6;
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case OCT:   status = 7;
-          initexpr();
-          initsym(syms1, token, token);
-          *sym = syms1;
-          ;
-          return 0;
-
-        case DECV:  status = 6;
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case INCV:  status = 6;
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case VOL:   status = 7;
+        case OCT:
+        case VOL:
+        case BAT:
+        case INST:
+        case LOOP:
+        case AMPL:
+        case VIB:
+        case TIMES:
+        case TIMEL:
+        case DIVSUS:
+        case BATL:
+        case INSTL:
+        case FREC:
+          status = 7;
           initexpr();
           initsym(syms1, token, token);
           *sym = syms1;
           return 0;
 
-        case BAT:   status = 7;
-          initexpr();
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case INST:  status = 7;
-          initexpr();
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case LOOP:  status = 7;
-          initexpr();
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case ENDL:  status = 6;
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case AMPL:  status = 7;
-          initexpr();
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case VIB:   status = 7;
-          initexpr();
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case TIMEP: status = 39;
+        case TIMEP:
+          status = 39;
           initexpr();
           initsym(syms1, token, token);
 
@@ -297,80 +257,55 @@ int syntaxan (int token,symbol * sym)
           *sym = syms2;
           return 0;
 
-        case TIMES: status = 7;
+
+        case REGFM:
+          status = 8;
           initexpr();
           initsym(syms1, token, token);
           *sym = syms1;
           return 0;
 
-        case TIMEL:  status = 7;
-          initexpr();
+
+        case PAR:
+          status = 9;
           initsym(syms1, token, token);
           *sym = syms1;
           return 0;
 
-        case DIVSUS: status = 7;
-          initexpr();
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case BATL:  status = 7;
-          initexpr();
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case INSTL: status = 7;
-          initexpr();
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case REGFM: status = 8;
-          initexpr();
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case FREC:  status = 7;
-          initexpr();
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case PAR:   status = 9;
-          initsym(syms1, token, token);
-          *sym = syms1;
-          return 0;
-
-        case IDEN: status = 10;
+        case IDEN:
+          status = 10;
           (*sym = searchsym(lexcad))? 0:rerror(ESYNTAX, EIDEN_NAME, 0);
           return 0;
 
         default: rerror(ESYNTAX, E_UNK_COMM, 0);
         }
 
-    case 6:
+      /* End of 1 word statement */
+    case STATUS_END_OF_1CMD:
       switch (token)
         {
-        case LN: status = STATUS_BEGIN_CHN_BODY;
-          {inscodeI(*sym, NULL, val);
-          }return 1;
+        case LN:
+          status = STATUS_BEGIN_CHN_BODY;
+          inscodeI(*sym, NULL, val);
+          return 1;
 
-        default: rerror(ESYNTAX, E_BAD_COMM, 0);
+        default:
+          rerror(ESYNTAX, E_BAD_COMM, 0);
         }
+
     case 7:
       switch (token)
         {
-        case NUMBER: status = 16;
-          {initsym(syms2, NUMBER, 0);
-            ssymsig(syms2,*sym);
-            *sym = syms2;
-            pushexp(NUMBER, atoi(lexcad));
-          }   return 0;
+        case NUMBER:
+          status = 16;
+          initsym(syms2, NUMBER, 0);
+          ssymsig(syms2,*sym);
+          *sym = syms2;
+          pushexp(NUMBER, atoi(lexcad));
+          return 0;
 
-        case IDEN:  status = 16;
+        case IDEN:
+          status = 16;
 
           {symbol ptr;
 
@@ -387,7 +322,8 @@ int syntaxan (int token,symbol * sym)
 
           } return 0;
 
-        case PARI:  status = 17;
+        case PARI:
+          status = 17;
           {ssymsig(syms2,*sym);
             *sym = syms2;
             pushexp(token, 0);
@@ -400,14 +336,16 @@ int syntaxan (int token,symbol * sym)
     case 8:
       switch (token)
         {
-        case NUMBER: status = 21;
+        case NUMBER:
+          status = 21;
           {initsym(syms3, NUMBER, 0);
             ssymsig(syms3,*sym);
             *sym = syms3;
             pushexp(NUMBER, atoi(lexcad));
           } return 0;
 
-        case IDEN: status = 21;
+        case IDEN:
+          status = 21;
 
           {symbol ptr;
 
@@ -425,7 +363,8 @@ int syntaxan (int token,symbol * sym)
             ;
           }return 0;
 
-        case PARI: status = 22;
+        case PARI:
+          status = 22;
           {ssymsig(syms3,*sym);
             *sym = syms3;
             pushexp(token, 0);
@@ -438,69 +377,80 @@ int syntaxan (int token,symbol * sym)
     case 9:
       switch (token)
         {
-        case ENVLOFF: status = 6;
+        case ENVLOFF:
+          status = STATUS_END_OF_1CMD;
           {initsym(syms2, token, token);
             ssymsig(syms2,*sym);
             *sym = syms2;
           }return 0;
 
-        case ENVLON:  status = 6;
+        case ENVLON:
+          status = STATUS_END_OF_1CMD;
           {initsym(syms2, token, token);
             ssymsig(syms2,*sym);
             *sym = syms2;
           }return 0;
 
-        case SUSON:   status = 6;
+        case SUSON:
+          status = STATUS_END_OF_1CMD;
           {initsym(syms2, token, token);
             ssymsig(syms2,*sym);
             *sym = syms2;
           }return 0;
 
-        case HFNUM:   status = 6;
+        case HFNUM:
+          status = STATUS_END_OF_1CMD;
           {initsym(syms2, token, token);
             ssymsig(syms2,*sym);
             *sym = syms2;
           }return 0;
 
-        case LFNUM:   status = 6;
+        case LFNUM:
+          status = STATUS_END_OF_1CMD;
           {initsym(syms2, token, token);
             ssymsig(syms2,*sym);
             *sym = syms2;
           }return 0;
 
-        case NOISE:   status = 6;
+        case NOISE:
+          status = STATUS_END_OF_1CMD;
           {initsym(syms2, token, token);
             ssymsig(syms2,*sym);
             *sym = syms2;
           }return 0;
 
-        case TONE:    status = 6;
+        case TONE:
+          status = STATUS_END_OF_1CMD;
           {initsym(syms2, token, token);
             ssymsig(syms2,*sym);
             *sym = syms2;
           }return 0;
 
-        case DECO:    status = 7;
+        case DECO:
+          status = 7;
           {initexpr();
             initsym(syms3, token, token);
             ssymsig(syms3,*sym);
             *sym = syms3;
           }return 0;
 
-        case TAMP:    status = 7;
+        case TAMP:
+          status = 7;
           {initexpr();
             initsym(syms3, token, token);
             ssymsig(syms3,*sym);
             *sym = syms3;
           }return 0;
 
-        case RITMON:  status = 6;
+        case RITMON:
+          status = STATUS_END_OF_1CMD;
           {initsym(syms2, token, token);
             ssymsig(syms2,*sym);
             *sym = syms2;
           }return 0;
 
-        case MELON:   status = 6;
+        case MELON:
+          status = STATUS_END_OF_1CMD;
           {initsym(syms2, token, token);
             ssymsig(syms2,*sym);
             *sym = syms2;
@@ -512,7 +462,8 @@ int syntaxan (int token,symbol * sym)
     case 10:
       switch (token)
         {
-        case EQ: status = 7;
+        case EQ:
+          status = 7;
           {initexpr();
           } return 0;
 
@@ -523,14 +474,16 @@ int syntaxan (int token,symbol * sym)
     case 11:
       switch(token)
         {
-        case NUMBER: status = 31;
+        case NUMBER:
+          status = 31;
           {initsym(syms2, NUMBER, 0);
             ssymsig(syms2,*sym);
             *sym = syms2;
             pushexp(NUMBER, atoi(lexcad));
           }   return 0;
 
-        case IDEN:  status = 31;
+        case IDEN:
+          status = 31;
 
           {symbol ptr;
 
@@ -547,7 +500,8 @@ int syntaxan (int token,symbol * sym)
 
           } return 0;
 
-        case PARI:  status = 31;
+        case PARI:
+          status = 31;
           {ssymsig(syms2,*sym);
             *sym = syms2;
             pushexp(token, 0);
@@ -563,7 +517,8 @@ int syntaxan (int token,symbol * sym)
                                  endc command */
       switch(token)
         {
-        case LN: status = 13;
+        case LN:
+          status = 13;
 
           inscode(gsymval(*sym));
 
@@ -583,10 +538,12 @@ int syntaxan (int token,symbol * sym)
 
       switch(token)
         {
-        case WRITE:   status = 38;
+        case WRITE:
+          status = 38;
           return 0;
 
-        case CHANNEL: status = STATUS_BEGIN_CHN_DECL;
+        case CHANNEL:
+          status = STATUS_BEGIN_CHN_DECL;
           return 0;
 
         case LN: return 1;
@@ -600,7 +557,8 @@ int syntaxan (int token,symbol * sym)
     case STATUS_BEGIN_GLOBAL_ASGN:
       switch(token)
         {
-        case EQ: status = 15;
+        case EQ:
+          status = 15;
           {initexpr();
           }return 0;
 
@@ -610,9 +568,12 @@ int syntaxan (int token,symbol * sym)
     case 15:
       switch(token)
         {
-        case NUMBER: status = 26;{pushexp(NUMBER, atoi(lexcad));};return 0;
-        case IDEN:  status = 26;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
-        case PARI:  status = 27;{pushexp(token, 0);}return 0;
+        case NUMBER:
+          status = 26;{pushexp(NUMBER, atoi(lexcad));};return 0;
+        case IDEN:
+          status = 26;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
+        case PARI:
+          status = 27;{pushexp(token, 0);}return 0;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
 
@@ -626,46 +587,63 @@ int syntaxan (int token,symbol * sym)
         case SUB:status = 20;{pushexp(token, 0);} return 0;
         case MUL:status = 20;{pushexp(token, 0);} return 0;
         case DIV:status = 20;{pushexp(token, 0);} return 0;
-        case LN: status = STATUS_BEGIN_CHN_BODY; {pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);}  return 1;
+        case LN:
+          status = STATUS_BEGIN_CHN_BODY; {pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);}  return 1;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
     case 17:
       switch(token)
         {
-        case NUMBER: status = 18;{pushexp(NUMBER, atoi(lexcad));}return 0;
-        case IDEN:  status = 18;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
-        case PARI:  status = 17;{pushexp(token, 0);}return 0;
+        case NUMBER:
+          status = 18;{pushexp(NUMBER, atoi(lexcad));}return 0;
+        case IDEN:
+          status = 18;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
+        case PARI:
+          status = 17;{pushexp(token, 0);}return 0;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
 
     case 18:
       switch(token)
         {
-        case PARD: status = 18;{pushexp(token, 0);}  return 0;
-        case ADD: status = 19; {pushexp(token, 0);}  return 0;
-        case SUB: status = 19; {pushexp(token, 0);} return 0;
-        case MUL: status = 19; {pushexp(token, 0);}return 0;
-        case DIV: status = 17; {pushexp(token, 0);}  return 0;
-        case LN: status = STATUS_BEGIN_CHN_BODY;   {pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);}return 1;
+        case PARD:
+          status = 18;{pushexp(token, 0);}  return 0;
+        case ADD:
+          status = 19; {pushexp(token, 0);}  return 0;
+        case SUB:
+          status = 19; {pushexp(token, 0);} return 0;
+        case MUL:
+          status = 19; {pushexp(token, 0);}return 0;
+        case DIV:
+          status = 17; {pushexp(token, 0);}  return 0;
+        case LN:
+          status = STATUS_BEGIN_CHN_BODY;   {pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);}return 1;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
 
     case 19:
       switch(token)
         {
-        case NUMBER: status = 18;{pushexp(NUMBER, atoi(lexcad));}return 0;
-        case IDEN:  status = 18; {symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
-        case PARI:  status = 19; {pushexp(token, 0);} return 0;
+        case NUMBER:
+          status = 18;{pushexp(NUMBER, atoi(lexcad));}return 0;
+        case IDEN:
+          status = 18; {symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
+        case PARI:
+          status = 19; {pushexp(token, 0);} return 0;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
 
     case 20:
       switch(token)
         {
-        case NUMBER: status = 18;{pushexp(NUMBER, atoi(lexcad));}return 0;
-        case IDEN:  status = 18; {symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);} return 0;
-        case PARI:  status = 19; {pushexp(token, 0);} return 0;
-        case PARD:  status = 18; {pushexp(token, 0);} return 0;
+        case NUMBER:
+          status = 18;{pushexp(NUMBER, atoi(lexcad));}return 0;
+        case IDEN:
+          status = 18; {symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);} return 0;
+        case PARI:
+          status = 19; {pushexp(token, 0);} return 0;
+        case PARD:
+          status = 18; {pushexp(token, 0);} return 0;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
 
@@ -678,7 +656,8 @@ int syntaxan (int token,symbol * sym)
         case SUB:status = 22;{pushexp(token, 0);}return 0;
         case MUL:status = 22;{pushexp(token, 0);}return 0;
         case DIV:status = 22;{pushexp(token, 0);}return 0;
-        case IDEN: status = 16;
+        case IDEN:
+          status = 16;
           {
             symbol ptr;
             pushexp(LN, 0);ssymval(*sym, evalexpr());initexpr();
@@ -691,7 +670,8 @@ int syntaxan (int token,symbol * sym)
             pushexp(NUMBER, atoi(lexcad));
             initsym(syms2, NUMBER, 0);ssymsig(syms2,*sym);*sym = syms2;
           }return 0;
-        case PARI: status = 16;
+        case PARI:
+          status = 16;
           {
             pushexp(LN, 0);ssymval(*sym, evalexpr());initexpr();
             pushexp(token, 0);
@@ -702,40 +682,57 @@ int syntaxan (int token,symbol * sym)
     case 22:
       switch(token)
         {
-        case NUMBER: status = 23;{pushexp(NUMBER, atoi(lexcad));}return 0;
-        case IDEN:  status = 23;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
-        case PARI:  status = 22;{pushexp(token, 0);}return 0;
+        case NUMBER:
+          status = 23;{pushexp(NUMBER, atoi(lexcad));}return 0;
+        case IDEN:
+          status = 23;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
+        case PARI:
+          status = 22;{pushexp(token, 0);}return 0;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
 
     case 23:
       switch(token)
         {
-        case PARD: status = 25;{pushexp(token, 0);}return 0;
-        case ADD: status = 24;{pushexp(token, 0);}return 0;
-        case SUB: status = 24;{pushexp(token, 0);}return 0;
-        case MUL: status = 24;{pushexp(token, 0);}return 0;
-        case DIV: status = 24;{pushexp(token, 0);}return 0;
+        case PARD:
+          status = 25;{pushexp(token, 0);}return 0;
+        case ADD:
+          status = 24;{pushexp(token, 0);}return 0;
+        case SUB:
+          status = 24;{pushexp(token, 0);}return 0;
+        case MUL:
+          status = 24;{pushexp(token, 0);}return 0;
+        case DIV:
+          status = 24;{pushexp(token, 0);}return 0;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
 
     case 24:
       switch(token)
         {
-        case NUMBER: status = 23;{pushexp(NUMBER, atoi(lexcad));}return 0;
-        case IDEN:  status = 23;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
-        case PARI:  status = 22;{pushexp(token, 0);}return 0;
+        case NUMBER:
+          status = 23;{pushexp(NUMBER, atoi(lexcad));}return 0;
+        case IDEN:
+          status = 23;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
+        case PARI:
+          status = 22;{pushexp(token, 0);}return 0;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
     case 25:
       switch (token)
         {
-        case PARD: status = 25;{pushexp(token, 0);}return 0;
-        case ADD: status = 24;{pushexp(token, 0);}return 0;
-        case SUB: status = 24;{pushexp(token, 0);}return 0;
-        case MUL: status = 24;{pushexp(token, 0);}return 0;
-        case DIV: status = 24;{pushexp(token, 0);}return 0;
-        case IDEN: status = 16;
+        case PARD:
+          status = 25;{pushexp(token, 0);}return 0;
+        case ADD:
+          status = 24;{pushexp(token, 0);}return 0;
+        case SUB:
+          status = 24;{pushexp(token, 0);}return 0;
+        case MUL:
+          status = 24;{pushexp(token, 0);}return 0;
+        case DIV:
+          status = 24;{pushexp(token, 0);}return 0;
+        case IDEN:
+          status = 16;
           {
             symbol ptr;
             pushexp(LN, 0);ssymval(*sym, evalexpr());initexpr();
@@ -748,7 +745,8 @@ int syntaxan (int token,symbol * sym)
             pushexp(NUMBER, atoi(lexcad));
             initsym(syms2, NUMBER, 0);ssymsig(syms2,*sym);*sym = syms2;
           }return 0;
-        case PARI: status = 16;
+        case PARI:
+          status = 16;
           {
             pushexp(LN, 0);ssymval(*sym, evalexpr());initexpr();
             pushexp(token, 0);
@@ -772,27 +770,37 @@ int syntaxan (int token,symbol * sym)
         case SUB:status = 15;{pushexp(token, 0);}return 0;
         case MUL:status = 15;{pushexp(token, 0);}return 0;
         case DIV:status = 15;{pushexp(token, 0);}return 0;
-        case LN: status = STATUS_INIT;{pushexp(token, 0);ssymval(*sym, evalexpr());}  return 1;
+        case LN:
+          status = STATUS_INIT;{pushexp(token, 0);ssymval(*sym, evalexpr());}  return 1;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
     case 27:
       switch(token)
         {
-        case NUMBER: status = 28;{pushexp(NUMBER, atoi(lexcad));}return 0;
-        case IDEN:  status = 28;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
-        case PARI:  status = 27;{pushexp(token, 0);}return 0;
+        case NUMBER:
+          status = 28;{pushexp(NUMBER, atoi(lexcad));}return 0;
+        case IDEN:
+          status = 28;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
+        case PARI:
+          status = 27;{pushexp(token, 0);}return 0;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
 
     case 28:
       switch(token)
         {
-        case PARD: status = 28;{pushexp(token, 0);}return 0;
-        case ADD:  status = 27;{pushexp(token, 0);}return 0;
-        case SUB:  status = 27;{pushexp(token, 0);}return 0;
-        case MUL:  status = 27;{pushexp(token, 0);}return 0;
-        case DIV:  status = 17;{pushexp(token, 0);}return 0;
-        case LN:   status = STATUS_INIT;{pushexp(token, 0);ssymval(*sym, evalexpr());}return 1;
+        case PARD:
+          status = 28;{pushexp(token, 0);}return 0;
+        case ADD:
+          status = 27;{pushexp(token, 0);}return 0;
+        case SUB:
+          status = 27;{pushexp(token, 0);}return 0;
+        case MUL:
+          status = 27;{pushexp(token, 0);}return 0;
+        case DIV:
+          status = 17;{pushexp(token, 0);}return 0;
+        case LN:
+          status = STATUS_INIT;{pushexp(token, 0);ssymval(*sym, evalexpr());}return 1;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
 
@@ -805,53 +813,78 @@ int syntaxan (int token,symbol * sym)
     case 31:
       switch(token)
         {
-        case ADD: status = 32;{pushexp(token, 0);}return 0;
-        case SUB: status = 32;{pushexp(token, 0);}return 0;
-        case MUL: status = 32;{pushexp(token, 0);}return 0;
-        case DIV: status = 32;{pushexp(token, 0);}return 0;
-        case SOS: status = 36;return 0;
-        case BEMOL: status = 36;return 0;
-        case COMA: status = 32;{pushexp(LN, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);initexpr();} return 0;
-        case LN: status = STATUS_BEGIN_CHN_BODY;{pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);} return 1;
+        case ADD:
+          status = 32;{pushexp(token, 0);}return 0;
+        case SUB:
+          status = 32;{pushexp(token, 0);}return 0;
+        case MUL:
+          status = 32;{pushexp(token, 0);}return 0;
+        case DIV:
+          status = 32;{pushexp(token, 0);}return 0;
+        case SOS:
+          status = 36;return 0;
+        case BEMOL:
+          status = 36;return 0;
+        case COMA:
+          status = 32;{pushexp(LN, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);initexpr();} return 0;
+        case LN:
+          status = STATUS_BEGIN_CHN_BODY;{pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);} return 1;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
     case 32:
       switch(token)
         {
-        case NUMBER: status = 33;{pushexp(NUMBER, atoi(lexcad));}return 0;
-        case IDEN:  status = 33;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
-        case PARI:  status = 32;{pushexp(token, 0);}return 0;
+        case NUMBER:
+          status = 33;{pushexp(NUMBER, atoi(lexcad));}return 0;
+        case IDEN:
+          status = 33;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
+        case PARI:
+          status = 32;{pushexp(token, 0);}return 0;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
 
     case 33:
       switch(token)
         {
-        case PARD: status = 33;{pushexp(token, 0);}return 0;
-        case ADD: status = 34;{pushexp(token, 0);}return 0;
-        case SUB: status = 34;{pushexp(token, 0);}return 0;
-        case MUL: status = 34;{pushexp(token, 0);}return 0;
-        case DIV: status = 34;{pushexp(token, 0);}return 0;
-        case SOS: status = 36;{pushexp(token, 0);ssymval(*sym, evalexpr());}return 0;
-        case BEMOL: status = 35;{pushexp(token, 0);ssymval(*sym, evalexpr());}return 0;
-        case COMA: status = 32;{pushexp(LN, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);initexpr();} return 0;
-        case LN: status = STATUS_BEGIN_CHN_BODY;{pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);}return 1;
+        case PARD:
+          status = 33;{pushexp(token, 0);}return 0;
+        case ADD:
+          status = 34;{pushexp(token, 0);}return 0;
+        case SUB:
+          status = 34;{pushexp(token, 0);}return 0;
+        case MUL:
+          status = 34;{pushexp(token, 0);}return 0;
+        case DIV:
+          status = 34;{pushexp(token, 0);}return 0;
+        case SOS:
+          status = 36;{pushexp(token, 0);ssymval(*sym, evalexpr());}return 0;
+        case BEMOL:
+          status = 35;{pushexp(token, 0);ssymval(*sym, evalexpr());}return 0;
+        case COMA:
+          status = 32;{pushexp(LN, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);initexpr();} return 0;
+        case LN:
+          status = STATUS_BEGIN_CHN_BODY;{pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);}return 1;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
     case 34:
       switch(token)
         {
-        case NUMBER: status = 31;{pushexp(NUMBER, atoi(lexcad));}return 0;
-        case IDEN:  status = 31;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
-        case PARI:  status = 32;{pushexp(token, 0);}return 0;
+        case NUMBER:
+          status = 31;{pushexp(NUMBER, atoi(lexcad));}return 0;
+        case IDEN:
+          status = 31;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
+        case PARI:
+          status = 32;{pushexp(token, 0);}return 0;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
 
     case 35:
       switch(token)
         {
-        case BEMOL: status = 35;{ssymval(*sym,((SIGNED char)gsymval(*sym))-3);}return 0;
-        case LN: status = STATUS_BEGIN_CHN_BODY;
+        case BEMOL:
+          status = 35;{ssymval(*sym,((SIGNED char)gsymval(*sym))-3);}return 0;
+        case LN:
+          status = STATUS_BEGIN_CHN_BODY;
           {SIGNED char val;
             val = gsymval(*sym);
             val-=3;
@@ -865,9 +898,12 @@ int syntaxan (int token,symbol * sym)
     case 36:
       switch(token)
         {
-        case SOS: status = 36;{ssymval(*sym, gsymval(*sym)+3);}return 0;
-        case LN: status = STATUS_BEGIN_CHN_BODY;{ssymval(*sym,(gsymval(*sym)+3)%34);inscodeI(*sym, NULL, val);}return 1;
-        case COMA: status = 32;{pushexp(LN, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);initexpr();} return 0;
+        case SOS:
+          status = 36;{ssymval(*sym, gsymval(*sym)+3);}return 0;
+        case LN:
+          status = STATUS_BEGIN_CHN_BODY;{ssymval(*sym,(gsymval(*sym)+3)%34);inscodeI(*sym, NULL, val);}return 1;
+        case COMA:
+          status = 32;{pushexp(LN, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);initexpr();} return 0;
         default: rerror(ESYNTAX, E_SOS, 0);
         }
 
@@ -875,9 +911,11 @@ int syntaxan (int token,symbol * sym)
       /*      case 37:
               switch(token)
               //        {
-              //        case IDEN: status = STATUS_BEGIN_GLOBAL_ASGN;{(*sym = searchsym(lexcad))? 0:rerror(0);}return 0;
+              //        case IDEN:
+              status = STATUS_BEGIN_GLOBAL_ASGN;{(*sym = searchsym(lexcad))? 0:rerror(0);}return 0;
               //        case LN: return 1;
-              //        case CHANNEL: status = STATUS_BEGIN_CHN_DECL;return 0;
+              //        case CHANNEL:
+              status = STATUS_BEGIN_CHN_DECL;return 0;
               //        default: rerror(ESYNTAX);
               //        }
 
@@ -886,7 +924,8 @@ int syntaxan (int token,symbol * sym)
     case 38:
       switch(token)
         {
-        case LN: status = 37;{errorg?rerror(EERROR, 0, 0):writesong();}return 2;            /*Fin de entrada*/
+        case LN:
+          status = 37;{errorg?rerror(EERROR, 0, 0):writesong();}return 2;            /*Fin de entrada*/
         default: rerror(ESYNTAX, E_BAD_COMM, 0);
         }
 
@@ -894,9 +933,12 @@ int syntaxan (int token,symbol * sym)
     case 39:
       switch (token)
         {
-        case NUMBER: status = 40;{pushexp(NUMBER, atoi(lexcad));}return 0;
-        case IDEN:  status = 40;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
-        case PARI:  status = 41;{pushexp(token, 0);}return 0;
+        case NUMBER:
+          status = 40;{pushexp(NUMBER, atoi(lexcad));}return 0;
+        case IDEN:
+          status = 40;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
+        case PARI:
+          status = 41;{pushexp(token, 0);}return 0;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
 
@@ -904,12 +946,18 @@ int syntaxan (int token,symbol * sym)
     case 40:
       switch(token)
         {
-        case ADD: status = 39;{pushexp(token, 0);}return 0;
-        case SUB: status = 39;{pushexp(token, 0);}return 0;
-        case MUL: status = 39;{pushexp(token, 0);}return 0;
-        case DIV: status = 39;{pushexp(token, 0);}return 0;
-        case POINT: status = 43;{pointp = point=32;};return 0;
-        case LN: status = STATUS_BEGIN_CHN_BODY;
+        case ADD:
+          status = 39;{pushexp(token, 0);}return 0;
+        case SUB:
+          status = 39;{pushexp(token, 0);}return 0;
+        case MUL:
+          status = 39;{pushexp(token, 0);}return 0;
+        case DIV:
+          status = 39;{pushexp(token, 0);}return 0;
+        case POINT:
+          status = 43;{pointp = point=32;};return 0;
+        case LN:
+          status = STATUS_BEGIN_CHN_BODY;
           {
             float time;
 
@@ -933,22 +981,32 @@ int syntaxan (int token,symbol * sym)
     case 41:
       switch(token)
         {
-        case NUMBER: status = 42;{pushexp(NUMBER, atoi(lexcad));}return 0;
-        case IDEN:  status = 42;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
-        case PARI:  status = 41;{pushexp(token, 0);}return 0;
+        case NUMBER:
+          status = 42;{pushexp(NUMBER, atoi(lexcad));}return 0;
+        case IDEN:
+          status = 42;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
+        case PARI:
+          status = 41;{pushexp(token, 0);}return 0;
         default: rerror(ESYNTAX, E_EXP, 0);
         }
 
     case 42:
       switch(token)
         {
-        case PARD: status = 42;{pushexp(token, 0);}return 0;
-        case ADD: status = 41;{pushexp(token, 0);}return 0;
-        case SUB: status = 41;{pushexp(token, 0);}return 0;
-        case MUL: status = 41;{pushexp(token, 0);}return 0;
-        case DIV: status = 41;{pushexp(token, 0);}return 0;
-        case POINT: status = 43;{pointp = point=32;} return 0;
-        case LN: status = STATUS_BEGIN_CHN_BODY;
+        case PARD:
+          status = 42;{pushexp(token, 0);}return 0;
+        case ADD:
+          status = 41;{pushexp(token, 0);}return 0;
+        case SUB:
+          status = 41;{pushexp(token, 0);}return 0;
+        case MUL:
+          status = 41;{pushexp(token, 0);}return 0;
+        case DIV:
+          status = 41;{pushexp(token, 0);}return 0;
+        case POINT:
+          status = 43;{pointp = point=32;} return 0;
+        case LN:
+          status = STATUS_BEGIN_CHN_BODY;
           {
             float time, timei;
 
@@ -973,7 +1031,8 @@ int syntaxan (int token,symbol * sym)
       switch(token)
         {
         case POINT: {pointp>>=1;point+=pointp;};return 0;
-        case LN: status = STATUS_BEGIN_CHN_BODY;
+        case LN:
+          status = STATUS_BEGIN_CHN_BODY;
           {
             float time, timei;
 
