@@ -576,16 +576,9 @@ int syntaxan (int token,symbol * sym)
           status = 18;
           pushexp(token, 0);
           return 0;
+
         case ADD:
-          status = 19;
-          pushexp(token, 0);
-          return 0;
-
         case SUB:
-          status = 19;
-          pushexp(token, 0);
-          return 0;
-
         case MUL:
           status = 19;
           pushexp(token, 0);
@@ -599,10 +592,10 @@ int syntaxan (int token,symbol * sym)
 
         case LN:
           status = STATUS_BEGIN_CHN_BODY;
-          {pushexp(token, 0);
-            ssymval(*sym, evalexpr());
-            inscodeI(*sym, NULL, val);
-          }return 1;
+          pushexp(token, 0);
+          ssymval(*sym, evalexpr());
+          inscodeI(*sym, NULL, val);
+          return 1;
 
         default: rerror(ESYNTAX, E_EXP, 0);
         }
@@ -612,14 +605,13 @@ int syntaxan (int token,symbol * sym)
         {
         case NUMBER:
           status = 18;
-          {pushexp(NUMBER, atoi(lexcad));
-          }return 0;
+          pushexp(NUMBER, atoi(lexcad));
+          return 0;
 
         case IDEN:
           status = 18;
-          {symbol ptr;
-            (ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);
-          }return 0;
+          (ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);
+          return 0;
 
         case PARI:
           status = 19;
@@ -661,43 +653,33 @@ int syntaxan (int token,symbol * sym)
       switch(token)
         {
         case ADD:
-          status = 22;
-          pushexp(token, 0);
-          return 0;
         case SUB:
-          status = 22;
-          pushexp(token, 0);
-          return 0;
         case MUL:
-          status = 22;
-          pushexp(token, 0);
-          return 0;
         case DIV:
           status = 22;
           pushexp(token, 0);
           return 0;
+
         case IDEN:
           status = 16;
-          {
-            symbol ptr;
-            pushexp(LN, 0);ssymval(*sym, evalexpr());initexpr();
-            (ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);
-            initsym(syms2, NUMBER, 0);ssymsig(syms2,*sym);*sym = syms2;
-          }return 0;
+          pushexp(LN, 0);ssymval(*sym, evalexpr());initexpr();
+          (ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);
+          initsym(syms2, NUMBER, 0);ssymsig(syms2,*sym);*sym = syms2;
+          return 0;
+
         case NUMBER:
           status = 16;
-          {
-            pushexp(LN, 0);ssymval(*sym, evalexpr());initexpr();
-            pushexp(NUMBER, atoi(lexcad));
-            initsym(syms2, NUMBER, 0);ssymsig(syms2,*sym);*sym = syms2;
-          }return 0;
+          pushexp(LN, 0);ssymval(*sym, evalexpr());initexpr();
+          pushexp(NUMBER, atoi(lexcad));
+          initsym(syms2, NUMBER, 0);ssymsig(syms2,*sym);*sym = syms2;
+          return 0;
         case PARI:
           status = 16;
-          {
-            pushexp(LN, 0);ssymval(*sym, evalexpr());initexpr();
-            pushexp(token, 0);
-            initsym(syms2, NUMBER, 0);ssymsig(syms2,*sym);*sym = syms2;
-          }return 0;
+          pushexp(LN, 0);ssymval(*sym, evalexpr());initexpr();
+          pushexp(token, 0);
+          initsym(syms2, NUMBER, 0);ssymsig(syms2,*sym);*sym = syms2;
+          return 0;
+
         default: rerror(ESYNTAX, E_EXP, 0);
         }
     case 22:
@@ -722,22 +704,15 @@ int syntaxan (int token,symbol * sym)
           pushexp(token, 0);
           return 0;
         case ADD:
-          status = 24;
-          pushexp(token, 0);
-          return 0;
         case SUB:
-          status = 24;
-          pushexp(token, 0);
-          return 0;
         case MUL:
-          status = 24;
-          pushexp(token, 0);
-          return 0;
         case DIV:
           status = 24;
           pushexp(token, 0);
           return 0;
-        default: rerror(ESYNTAX, E_EXP, 0);
+
+        default:
+          rerror(ESYNTAX, E_EXP, 0);
         }
 
     case 24:
