@@ -543,8 +543,8 @@ int syntaxan (int token,symbol * sym)
         {
         case NUMBER:
           status = 18;
-          {pushexp(NUMBER, atoi(lexcad));
-          }return 0;
+          pushexp(NUMBER, atoi(lexcad));
+          return 0;
         case IDEN:
           status = 18;
           (ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);
