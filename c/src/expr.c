@@ -4,6 +4,7 @@
 #include "error.h"
 #include "tokens.h"
 #include "expr.h"
+#include "syntax.h"
 
 
 
@@ -119,8 +120,8 @@ float evalexpr()
 
     for(;;)
       {
-        if (status==-1)       /*esto solo se da por los parentesis, esta comprobado por el analisis anterior*/
-          rerror(0,0,0);
+        if (status == -1)       /*esto solo se da por los parentesis, esta comprobado por el analisis anterior*/
+          rerror(ESYNTAX, E_EXP,0);
 
 
         actual=&acttb[status][headf(tokff)];
@@ -139,7 +140,7 @@ float evalexpr()
           term=tailt(stkSLR);
           }
         else if(actual->act == E)
-          rerror(0,0,0);
+          rerror(ESYNTAX, E_EXP,0);
         else
            {
              val=popval();

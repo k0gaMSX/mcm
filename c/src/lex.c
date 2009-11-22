@@ -163,7 +163,7 @@ int flushinr()
     if(car == '\n')
       return;
 
-    while(car!='\n')
+    while (car != '\n')
       {
         car=wfgetc(oldin);
 #ifdef _DEBUG_
@@ -179,15 +179,15 @@ int flushin ()
   {
   extern int nline;
 
-  if(car == '\n' || car==':')
+  if (car == '\n' || car==':')
     return;
 
-  while(car != '\n' && car != ':')
+  while (car != '\n' && car != ':')
     {
-    car=wfgetc(oldin);
-//#ifdef _DEBUG_
+    car = wfgetc(oldin);
+#ifdef _DEBUG_
     fprintf(stderr,"Limpiando...\n");
-//#endif
+#endif
     }
 
 
@@ -207,7 +207,7 @@ int lexerror(char * file,int line,char car)
   {
 
 
-    fprintf(stderr,"%s:%d: Unexpected character: \\0x%02.2x\n",file,line,((unsigned)car)&0xFF);
+    fprintf(stderr,"%s:%d: Unexpected character: %c\n",file, line, car);
     return 0;
   }
 
