@@ -4,7 +4,7 @@
 
 
 #ifdef __ERRORC__
-#define EXTERN 
+#define EXTERN
 #else
 #define EXTERN extern
 #endif
@@ -22,7 +22,6 @@ int rerror (char nerror,char serr,char par1);
 #define EFILE   4
 #define EERROR  5
 #define E_INV_PAR 6
-
 
 #undef EXTERN
 #endif
