@@ -13,8 +13,10 @@ int initsyn();
 
 char * filen;
 int nline;
-
 FILE * out;
+extern jmp_buf recover;
+
+
 
 main (int argc,char * argv[])
   {
@@ -43,6 +45,7 @@ main (int argc,char * argv[])
     initasm();                  /* Init symbol table */
     initmachine();
     ierror();                       /*Point of error recover*/
+    setjmp(recover);
     for(;;)
       {
         token=gettoken(in);
