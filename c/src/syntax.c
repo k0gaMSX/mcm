@@ -258,20 +258,20 @@ int syntaxan (int token,symbol * sym)
           *sym = syms2;
           return 0;
 
-        case REGFM:
+        case REGFM:             /* write to fm register statement */
           status = 8;
           initexpr();
           initsym(syms1, token, token);
           *sym = syms1;
           return 0;
 
-        case PAR:
+        case PAR:               /* parameter statement */
           status = 9;
           initsym(syms1, token, token);
           *sym = syms1;
           return 0;
 
-        case IDEN:
+        case IDEN:              /* Begin a assign statement */
           status = 10;
           (*sym = searchsym(lexcad))? 0:rerror(ESYNTAX, EIDEN_NAME, 0);
           return 0;
@@ -508,9 +508,8 @@ int syntaxan (int token,symbol * sym)
           return 0;
         case IDEN:
           status = 26;
-          {symbol ptr;
-            (ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);
-          }return 0;
+          (ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);
+          return 0;
         case PARI:
           status = 27;
           pushexp(token, 0);
@@ -523,29 +522,18 @@ int syntaxan (int token,symbol * sym)
       switch(token)
         {
         case ADD:
-          status = 20;
-          pushexp(token, 0);
-          return 0;
         case SUB:
-          status = 20;
-
-          pushexp(token, 0);
-          return 0;
         case MUL:
-          status = 20;
-
-          pushexp(token, 0);
-          return 0;
         case DIV:
           status = 20;
           pushexp(token, 0);
           return 0;
         case LN:
           status = STATUS_BEGIN_CHN_BODY;
-          {pushexp(token, 0);
-            ssymval(*sym, evalexpr());
-            inscodeI(*sym, NULL, val);
-          }  return 1;
+          pushexp(token, 0);
+          ssymval(*sym, evalexpr());
+          inscodeI(*sym, NULL, val);
+          return 1;
         default: rerror(ESYNTAX, E_EXP, 0);
 
         }
@@ -559,9 +547,8 @@ int syntaxan (int token,symbol * sym)
           }return 0;
         case IDEN:
           status = 18;
-          {symbol ptr;
-            (ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);
-          }return 0;
+          (ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);
+          return 0;
         case PARI:
           status = 17;
           pushexp(token, 0);
@@ -662,7 +649,9 @@ int syntaxan (int token,symbol * sym)
 
         case IDEN:
           status = 16;
-          pushexp(LN, 0);ssymval(*sym, evalexpr());initexpr();
+          pushexp(LN, 0);
+          ssymval(*sym, evalexpr());
+          initexpr();
           (ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);
           initsym(syms2, NUMBER, 0);ssymsig(syms2,*sym);*sym = syms2;
           return 0;
