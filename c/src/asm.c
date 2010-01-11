@@ -18,7 +18,7 @@ extern jmp_buf recover;
 
 
 
-main (int argc,char * argv[])
+int main (int argc,char * argv[])
   {
     static FILE * in;
     static int token;
@@ -44,19 +44,17 @@ main (int argc,char * argv[])
 
     initasm();                  /* Init symbol table */
     initmachine();
-    ierror();                       /*Point of error recover*/
-    setjmp(recover);
+    ierror();
+    setjmp(recover);            /* Point of error recover */
     for(;;)
       {
-        token=gettoken(in);
-        if ((syntaxan(token,&sym))==2) goto end;
-#ifdef _DEBUG_
-        fprintf(stderr,"Estado=%d\n",getstatus());
-#endif
+        token = gettoken(in);
+        if ((syntaxan(token, &sym)) == 2)
+          break;
+        LOG("Estado=%d\n",getstatus());
       }
 
-end:
-    fprintf(stderr,"Programa correcto!!!!!!\n");
+    exit(EXIT_SUCCESS);
   }
 
 
@@ -151,7 +149,7 @@ int initasm()
 
 
   for(ptr=vars;ptr->name;ptr++)
-    ssymval(insvar(newsymbol(ptr->name)),ptr->value);
+    ssymval(insvar(newsymbol(ptr->name)), ptr->value);
 
 
   initsyn();
