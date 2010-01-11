@@ -46,7 +46,7 @@ int rerror (char nerror,char serr,char par1)
         fprintf(stderr,"%s:%d: It can't be written output file\n",filen,nline);
         exit(EXIT_FAILURE);
       case EERROR:
-        fprintf(stderr,"%s:%d: No output file written due to finding errors\n",filen,nline);
+        fprintf(stderr,"%s:%d: No output file written due to found errors\n",filen,nline);
         exit(EXIT_FAILURE);
       case E_INV_PAR:
         errorsem(nerror,serr,par1,nline,filen);

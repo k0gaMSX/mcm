@@ -23,5 +23,12 @@ int rerror (char nerror,char serr,char par1);
 #define EERROR  5
 #define E_INV_PAR 6
 
+#ifdef _DEBUG_
+    #define LOG(x, y)     fprintf(stderr, x, y);
+#else
+   #define LOG(x, y)
+#endif
+
+
 #undef EXTERN
 #endif

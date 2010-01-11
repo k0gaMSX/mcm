@@ -15,7 +15,7 @@
 
 
 struct wordr
-  {  
+  {
   char * name;
   int val;
   };
@@ -24,48 +24,50 @@ struct wordr
 
 EXTERN struct wordr wordrs []
 
-#ifdef __LEXC__		   
-		= {"endc",ENDC,
-		   "play",PLAY,
-		   "rest",SIL,
-		   "decoc",DECOC,
-		   "incoc",INCOC,
-		   "oct",OCT,
-		   "decv",DECV,
-		   "incv",INCV,
-		   "vol",VOL,
-		   "noise",BAT,
-		   "inst",INST,
-		   "loop",LOOP,
-		   "endl",ENDL,
-		   "adsr",AMPL,
-		   "vib",VIB,
-		   "timel",TIMEL,
-		   "times",TIMES,
-		   "time",TIMEP,
-		   "divsus",DIVSUS,
-		   "loopl",LOOPL,
-		   "druml",BATL,
-		   "instl",INSTL,
-		   "regfm",REGFM,
-		   "frec",FREC,
-		   "par",PAR,
-		   "chnoff",ENVLOFF,
-		   "chnon",ENVLON,
-		   "suson",SUSON,
-		   "susoff",SUSOFF,
-		   "sd_hh",HFNUM,
-		   "tom_tcy",LFNUM,
-		   "noise",NOISE,
-		   "noiseoff",TONE,
-		   "deco",DECO,
-		   "tamp",TAMP,
-		   "ritmon",RITMON,
-		   "melon",MELON,
-		   "channel",CHANNEL,
-		   "var", VAR,
-		   "write",WRITE,		   
-		   0,0}
+#ifdef __LEXC__
+                = {"endc",ENDC,
+                   "play",PLAY,
+                   "rest",SIL,
+                   "decoc",DECOC,
+                   "incoc",INCOC,
+                   "oct",OCT,
+                   "decv",DECV,
+                   "incv",INCV,
+                   "vol",VOL,
+                   "drum",BAT,
+                   "inst",INST,
+                   "loop",LOOP,
+                   "endl",ENDL,
+                   "adsr",AMPL,
+                   "vib",VIB,
+                   "timel",TIMEL,
+                   "times",TIMES,
+                   "time",TIMEP,
+                   "divsus",DIVSUS,
+                   "loopl",LOOPL,
+                   "druml",BATL,
+                   "instl",INSTL,
+                   "regfm",REGFM,
+                   "frec",FREC,
+                   "par",PAR,
+                   "chnoff",ENVLOFF,
+                   "chnon",ENVLON,
+                   "suson",SUSON,
+                   "susoff",SUSOFF,
+                   "sd_hh",HFNUM,
+                   "sdhh",HFNUM,
+                   "tom_tcy",LFNUM,
+                   "tomtcy",LFNUM,
+                   "noise",NOISE,
+                   "noiseoff",TONE,
+                   "deco",DECO,
+                   "tamp",TAMP,
+                   "ritmon",RITMON,
+                   "melon",MELON,
+                   "channel",CHANNEL,
+                   "var", VAR,
+                   "write",WRITE,
+                   0,0}
 #endif
 ;
 

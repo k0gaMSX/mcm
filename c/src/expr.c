@@ -125,9 +125,10 @@ float evalexpr()
 
 
         actual=&acttb[status][headf(tokff)];
-#ifdef _DEBUG_
-        fprintf(stderr,"Estado del evaluador: %d %d %d\n",status,actual->act,headf(tokff));
-#endif
+        LOG("Estado del evaluador: %d", status);
+        LOG(" %d", actual->act);
+        LOG(" %d\n", headf(tokff));
+
         if (actual->act == D)
            {
            ptr=next(&tokff);
