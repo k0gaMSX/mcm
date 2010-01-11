@@ -28,9 +28,11 @@ symbol searchsym (char *);
 
 #define gsymval(sym) ((sym)->val.val)
 #define ssymval(sym,num) ((sym)->val.val=(num))
+#define ssymtype(sym, x) ((sym)->type = x)
 #define gsymtype(sym) ((sym)->type)
 #define ssymsig(sym1,sym2) ((sym1)->sig=(sym2))
 #define gsymsig(sym) ((sym)->sig)
+#define gsymlex(sym) ((sym)->lex)
 #define initsym(sym,t,v) ((sym)->type=(t),(sym)->val.val=(v),(sym)->sig=NULL)
 
 #endif
