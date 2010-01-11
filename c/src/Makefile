@@ -4,15 +4,18 @@ ASMOBJ = $(ASMSRC:.c=.o)
 LDFLAGS = -lm
 CFLAGS = -g -D_DEBUG_
 OBJS = ASMOBJS
-DEPS = $(OBJS:.o:.dep)
-
+DEPS = $(ASMSRC:.c=.dep)
+DEPFLAG = -MM
 TARGETS = mcm-asm
 
-
+all: mcm-asm
 
 mcm-asm: $(ASMOBJ)
 	$(CC) $(ASMOBJ) $(LDFLAGS) -o $@
 
+
+%.dep: %.c
+	$(CPP) $(DEPFLAG) $< > $@
 
 
 dep: $(DEPS)
