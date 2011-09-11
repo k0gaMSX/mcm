@@ -80,7 +80,9 @@ enum
     STATUS_EXP2_OPERATOR,
 
 
-    STATUS_PLAY_EXPRESION = 100
+    STATUS_PLAY_EXPRESION = 100,
+    STATUS_PLAY_BEMOL,
+    STATUS_PLAY_SOST
   };
 
 int syntaxan (int token,symbol * sym)
@@ -652,11 +654,11 @@ int syntaxan (int token,symbol * sym)
                     return 0;
 
             case SOS:
-                    status = 36;
+                    status = STATUS_PLAY_SOST;
                     return 0;
 
             case BEMOL:
-                    status = 35;
+                    status = STATUS_PLAY_BEMOL;
                     return 0;
 
             case COMA:
@@ -717,9 +719,9 @@ int syntaxan (int token,symbol * sym)
           pushexp(token, 0);
           return 0;
         case SOS:
-          status = 36;{pushexp(token, 0);ssymval(*sym, evalexpr());}return 0;
+          status = STATUS_PLAY_SOST;{pushexp(token, 0);ssymval(*sym, evalexpr());}return 0;
         case BEMOL:
-          status = 35;{pushexp(token, 0);ssymval(*sym, evalexpr());}return 0;
+          status = STATUS_PLAY_BEMOL;{pushexp(token, 0);ssymval(*sym, evalexpr());}return 0;
         case COMA:
           status = 32;{pushexp(LN, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, num_channel);initexpr();} return 0;
         case LN:
@@ -740,34 +742,54 @@ int syntaxan (int token,symbol * sym)
         default: rerror(ESYNTAX, E_EXP, 0);
         }
 
-    case 35:
-      switch(token)
-        {
-        case BEMOL:
-          status = 35;{ssymval(*sym,((SIGNED char)gsymval(*sym))-3);}return 0;
-        case LN:
-          status = STATUS_BEGIN_CHN_BODY;
-          {SIGNED char val;
-            val = gsymval(*sym);
-            val-=3;
-            if(val<0)
-              val = 33-val;
+    case STATUS_PLAY_BEMOL:
+      switch(token) {
+      case BEMOL:
+              pushexp(SUB, 0);
+              pushexp(NUMBER, 3);
+              return 0;
 
-            ssymval(*sym, val);inscodeI(*sym, NULL, num_channel);}return 1;
-        default: rerror(ESYNTAX, E_BEMOL, 0);
-        }
+      case COMA:
+      case LN:
+              pushexp(LN, 0);
+              ssymval(*sym, evalexpr() - 3);
+              inscodeI(*sym, NULL, num_channel);
+              if (token == LN) {
+                      status = STATUS_BEGIN_CHN_BODY;
+                      return 1;
+              } else {
+                      status = 32;
+                      initexpr();
+                      return 0;
+              }
 
-    case 36:
-      switch(token)
-        {
-        case SOS:
-          status = 36;{ssymval(*sym, gsymval(*sym)+3);}return 0;
-        case LN:
-          status = STATUS_BEGIN_CHN_BODY;{ssymval(*sym,(gsymval(*sym)+3)%34);inscodeI(*sym, NULL, num_channel);}return 1;
-        case COMA:
-          status = 32;{pushexp(LN, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, num_channel);initexpr();} return 0;
-        default: rerror(ESYNTAX, E_SOS, 0);
-        }
+      default: rerror(ESYNTAX, E_BEMOL, 0);
+      }
+
+    case STATUS_PLAY_SOST:
+      switch(token) {
+      case SOS:
+              pushexp(ADD, 0);
+              pushexp(NUMBER, 3);
+              return 0;
+
+      case COMA:
+      case LN:
+              pushexp(LN, 0);
+              ssymval(*sym, evalexpr() + 3);
+              inscodeI(*sym, NULL, num_channel);
+              if (token == LN) {
+                      status = STATUS_BEGIN_CHN_BODY;
+                      return 1;
+              } else {
+                      status = 32;
+                      initexpr();
+                      return 0;
+              }
+
+
+      default: rerror(ESYNTAX, E_SOS, 0);
+      }
 
 
     case 38:
