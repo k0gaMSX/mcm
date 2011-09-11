@@ -661,7 +661,7 @@ int syntaxan (int token,symbol * sym)
           status = 36;
           return 0;
         case BEMOL:
-          status = 36;
+          status = 35;
           return 0;
         case COMA:
           status = 32;{pushexp(LN, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, val);initexpr();} return 0;
