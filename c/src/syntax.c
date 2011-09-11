@@ -72,12 +72,15 @@ enum
     STATUS_END_OF_CHANNEL,
     STATUS_BEGIN_CHN_BODY,
 
-    STATUS_BEGIN_GLOBAL_ASGN = 100,
+    STATUS_BEGIN_GLOBAL_ASGN = 64,
     STATUS_BEGIN_ENDC,
     STATUS_END_OF_1CMD,
     STATUS_BEGIN_EXP_2CMD,
     STATUS_EXP2_OPERAND,
-    STATUS_EXP2_OPERATOR
+    STATUS_EXP2_OPERATOR,
+
+
+    STATUS_PLAY_EXPRESION = 100
   };
 
 int syntaxan (int token,symbol * sym)
@@ -394,7 +397,7 @@ int syntaxan (int token,symbol * sym)
       switch(token)
         {
         case NUMBER:
-          status = 31;
+          status = STATUS_PLAY_EXPRESION;
           initsym(syms2, NUMBER, 0);
           ssymsig(syms2,*sym);
           *sym = syms2;
@@ -402,7 +405,7 @@ int syntaxan (int token,symbol * sym)
           return 0;
 
         case IDEN:
-          status = 31;
+          status = STATUS_PLAY_EXPRESION;
           if((ptr = searchsym(lexcad)) == NULL)
             rerror(ESYNTAX, EIDEN_NAME, 0);
 
@@ -413,7 +416,7 @@ int syntaxan (int token,symbol * sym)
           return 0;
 
         case PARI:
-          status = 31;
+          status = STATUS_PLAY_EXPRESION;
           ssymsig(syms2,*sym);
           *sym = syms2;
           pushexp(token, 0);
@@ -638,37 +641,44 @@ int syntaxan (int token,symbol * sym)
 
       /*Expresion de play*/
 
-    case 31:
-      switch(token)
-        {
-        case ADD:
-          status = 32;
-          pushexp(token, 0);
-          return 0;
-        case SUB:
-          status = 32;
-          pushexp(token, 0);
-          return 0;
-        case MUL:
-          status = 32;
-          pushexp(token, 0);
-          return 0;
-        case DIV:
-          status = 32;
-          pushexp(token, 0);
-          return 0;
-        case SOS:
-          status = 36;
-          return 0;
-        case BEMOL:
-          status = 35;
-          return 0;
-        case COMA:
-          status = 32;{pushexp(LN, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, num_channel);initexpr();} return 0;
-        case LN:
-          status = STATUS_BEGIN_CHN_BODY;{pushexp(token, 0);ssymval(*sym, evalexpr());inscodeI(*sym, NULL, num_channel);} return 1;
-        default: rerror(ESYNTAX, E_EXP, 0);
-        }
+    case STATUS_PLAY_EXPRESION:
+            switch(token) {
+            case ADD:
+            case SUB:
+            case MUL:
+            case DIV:
+                    status = 32;
+                    pushexp(token, 0);
+                    return 0;
+
+            case SOS:
+                    status = 36;
+                    return 0;
+
+            case BEMOL:
+                    status = 35;
+                    return 0;
+
+            case COMA:
+            case LN:
+                    pushexp(LN, 0);
+                    ssymval(*sym, evalexpr());
+                    inscodeI(*sym, NULL, num_channel);
+                    if (token == COMA) {
+                            status = 32;
+                            initexpr();
+                            return 0;
+                    } else {
+                            status = STATUS_BEGIN_CHN_BODY;
+                            return 1;
+                    }
+
+
+            default:
+                    rerror(ESYNTAX, E_EXP, 0);
+            }
+
+
     case 32:
       switch(token)
         {
@@ -720,9 +730,9 @@ int syntaxan (int token,symbol * sym)
       switch(token)
         {
         case NUMBER:
-          status = 31;{pushexp(NUMBER, atoi(lexcad));}return 0;
+          status = STATUS_PLAY_EXPRESION;{pushexp(NUMBER, atoi(lexcad));}return 0;
         case IDEN:
-          status = 31;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
+          status = STATUS_PLAY_EXPRESION;{symbol ptr;(ptr = searchsym(lexcad))?pushexp(NUMBER, gsymval(ptr)):rerror(ESYNTAX, EIDEN_NAME, 0);}return 0;
         case PARI:
           status = 32;
           pushexp(token, 0);
